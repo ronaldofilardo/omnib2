@@ -16,6 +16,7 @@ async function main() {
       email: 'user@email.com',
       password: hashedPassword,
       name: 'Usuário Padrão',
+      cpf: '12345678901', // CPF obrigatório
     },
   })
   console.log('✅ Usuário criado:', user.email)

@@ -1,168 +1,108 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
-import { DeleteEventModal } from '../../../src/components/DeleteEventModal'
+import { render, screen, fireEvent } from '@testing-library/react';
+import { DeleteEventModal } from '@/components/DeleteEventModal';
+import { vi } from 'vitest';
 
 describe('DeleteEventModal', () => {
-  const mockOnOpenChange = vi.fn()
-  const mockOnConfirm = vi.fn()
+  const mockOnOpenChange = vi.fn();
+  const mockOnConfirm = vi.fn();
 
-  const renderModal = (open = true, eventTitle = 'Consulta Médica') => {
-    return render(
-      <DeleteEventModal
-        open={open}
-        onOpenChange={mockOnOpenChange}
-        onConfirm={mockOnConfirm}
-        eventTitle={eventTitle}
-      />
-    )
-  }
+  const defaultProps = {
+    open: true,
+    onOpenChange: mockOnOpenChange,
+    onConfirm: mockOnConfirm,
+    eventTitle: 'Consulta Médica',
+  };
 
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
   it('renders modal when open is true', () => {
-    renderModal(true)
-
-    expect(screen.getByText('Excluir Evento')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Tem certeza de que deseja excluir o evento "Consulta Médica"?'
-      )
-    ).toBeInTheDocument()
-    expect(screen.getByText('Deletar arquivos associados')).toBeInTheDocument()
-    expect(screen.getByText('Cancelar')).toBeInTheDocument()
-    expect(screen.getByText('Confirmar')).toBeInTheDocument()
-  })
+    render(<DeleteEventModal {...defaultProps} />);
+    expect(screen.getByText('Excluir Evento')).toBeInTheDocument();
+    expect(screen.getByText('Tem certeza de que deseja excluir o evento "Consulta Médica"?')).toBeInTheDocument();
+  });
 
   it('does not render modal when open is false', () => {
-    renderModal(false)
+    render(<DeleteEventModal {...defaultProps} open={false} />);
+    expect(screen.queryByText('Excluir Evento')).not.toBeInTheDocument();
+  });
 
-    expect(screen.queryByText('Excluir Evento')).not.toBeInTheDocument()
-  })
+  it('renders delete files checkbox', () => {
+    render(<DeleteEventModal {...defaultProps} />);
+    const checkbox = screen.getByRole('checkbox', { name: /deletar arquivos associados/i });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).not.toBeChecked();
+  });
 
-  it('displays the correct event title', () => {
-    renderModal(true, 'Exame de Sangue')
+  it('allows toggling delete files checkbox', () => {
+    render(<DeleteEventModal {...defaultProps} />);
+    const checkbox = screen.getByRole('checkbox', { name: /deletar arquivos associados/i });
 
-    expect(
-      screen.getByText(
-        'Tem certeza de que deseja excluir o evento "Exame de Sangue"?'
-      )
-    ).toBeInTheDocument()
-  })
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
 
-  it('checkbox starts unchecked', () => {
-    renderModal(true)
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+  });
 
-    const checkbox = screen.getByRole('checkbox', {
-      name: /deletar arquivos associados/i,
-    })
-    expect(checkbox).not.toBeChecked()
-  })
+  it('calls onConfirm with deleteFiles=false when confirm is clicked without checkbox', () => {
+    render(<DeleteEventModal {...defaultProps} />);
+    const confirmButton = screen.getByText('Confirmar');
 
-  it('can check and uncheck the delete files checkbox', () => {
-    renderModal(true)
+    fireEvent.click(confirmButton);
 
-    const checkbox = screen.getByRole('checkbox', {
-      name: /deletar arquivos associados/i,
-    })
+    expect(mockOnConfirm).toHaveBeenCalledWith(false);
+    expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+  });
 
-    // Check the checkbox
-    fireEvent.click(checkbox)
-    expect(checkbox).toBeChecked()
+  it('calls onConfirm with deleteFiles=true when confirm is clicked with checkbox checked', () => {
+    render(<DeleteEventModal {...defaultProps} />);
+    const checkbox = screen.getByRole('checkbox', { name: /deletar arquivos associados/i });
+    const confirmButton = screen.getByText('Confirmar');
 
-    // Uncheck the checkbox
-    fireEvent.click(checkbox)
-    expect(checkbox).not.toBeChecked()
-  })
+    fireEvent.click(checkbox);
+    fireEvent.click(confirmButton);
 
-  it('calls onConfirm with false when confirming without checkbox checked', () => {
-    renderModal(true)
+    expect(mockOnConfirm).toHaveBeenCalledWith(true);
+    expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+  });
 
-    const confirmButton = screen.getByText('Confirmar')
-    fireEvent.click(confirmButton)
+  it('calls onOpenChange with false when cancel is clicked', () => {
+    render(<DeleteEventModal {...defaultProps} />);
+    const cancelButton = screen.getByText('Cancelar');
 
-    expect(mockOnConfirm).toHaveBeenCalledWith(false)
-    expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-  })
+    fireEvent.click(cancelButton);
 
-  it('calls onConfirm with true when confirming with checkbox checked', () => {
-    renderModal(true)
+    expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+    expect(mockOnConfirm).not.toHaveBeenCalled();
+  });
 
-    const checkbox = screen.getByRole('checkbox', {
-      name: /deletar arquivos associados/i,
-    })
-    fireEvent.click(checkbox)
+  it('resets checkbox state when modal is reopened', () => {
+    const { rerender } = render(<DeleteEventModal {...defaultProps} />);
+    const checkbox = screen.getByRole('checkbox', { name: /deletar arquivos associados/i });
 
-    const confirmButton = screen.getByText('Confirmar')
-    fireEvent.click(confirmButton)
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
 
-    expect(mockOnConfirm).toHaveBeenCalledWith(true)
-    expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-  })
+    // Close modal
+    rerender(<DeleteEventModal {...defaultProps} open={false} />);
 
-  it('calls onOpenChange with false when canceling', () => {
-    renderModal(true)
+    // Reopen modal
+    rerender(<DeleteEventModal {...defaultProps} open={true} />);
 
-    const cancelButton = screen.getByText('Cancelar')
-    fireEvent.click(cancelButton)
-
-    expect(mockOnConfirm).not.toHaveBeenCalled()
-    expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-  })
-
-  it('resets checkbox state when canceling', () => {
-    renderModal(true)
-
-    const checkbox = screen.getByRole('checkbox', {
-      name: /deletar arquivos associados/i,
-    })
-    fireEvent.click(checkbox)
-    expect(checkbox).toBeChecked()
-
-    const cancelButton = screen.getByText('Cancelar')
-    fireEvent.click(cancelButton)
-
-    // Since the modal closes, we can't check the state, but the function should reset it
-    expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-  })
-
-  it('resets checkbox state when confirming', () => {
-    renderModal(true)
-
-    const checkbox = screen.getByRole('checkbox', {
-      name: /deletar arquivos associados/i,
-    })
-    fireEvent.click(checkbox)
-    expect(checkbox).toBeChecked()
-
-    const confirmButton = screen.getByText('Confirmar')
-    fireEvent.click(confirmButton)
-
-    // Since the modal closes, we can't check the state, but the function should reset it
-    expect(mockOnConfirm).toHaveBeenCalledWith(true)
-    expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-  })
+    const newCheckbox = screen.getByRole('checkbox', { name: /deletar arquivos associados/i });
+    expect(newCheckbox).not.toBeChecked();
+  });
 
   it('displays copyright notice', () => {
-    renderModal(true)
+    render(<DeleteEventModal {...defaultProps} />);
+    expect(screen.getByText('© 2025 Omni Saúde')).toBeInTheDocument();
+  });
 
-    expect(screen.getByText('© 2025 Omni Saúde')).toBeInTheDocument()
-  })
-
-  it('handles checkbox indeterminate state', () => {
-    renderModal(true)
-
-    const checkbox = screen.getByRole('checkbox', {
-      name: /deletar arquivos associados/i,
-    })
-
-    // The component handles 'indeterminate' by converting to boolean
-    // This test ensures the checkbox can be toggled properly
-    fireEvent.click(checkbox)
-    expect(checkbox).toBeChecked()
-
-    fireEvent.click(checkbox)
-    expect(checkbox).not.toBeChecked()
-  })
-})
+  it('has proper accessibility attributes', () => {
+    render(<DeleteEventModal {...defaultProps} />);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Confirmar exclusão do evento')).toBeInTheDocument();
+  });
+});

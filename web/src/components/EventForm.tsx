@@ -177,13 +177,15 @@ export function EventForm({
         <label className="text-[#374151] text-sm block">Observação</label>
         <Textarea
           placeholder="Digite observações sobre o evento..."
-          value={formState.observation}
+          value={formState.observation ?? ''}
           onChange={(e) => handleFieldChange('observation', e.target.value)}
           maxLength={500}
-          className="h-24 bg-[#F3F4F6] border border-[#D1D5DB] rounded px-3 py-2 text-sm"
+          className="h-24 bg-[#F3F4F6] border border-[#D1D5DB] rounded px-3 py-2 text-sm text-[#374151]"
+          disabled={false}
+          readOnly={false}
         />
         <p className="text-xs text-[#9CA3AF] text-right m-0">
-          {formState.observation.length}/500 caracteres
+          {(formState.observation ?? '').length}/500 caracteres
         </p>
       </div>
     </div>

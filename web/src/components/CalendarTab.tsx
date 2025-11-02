@@ -35,6 +35,11 @@ export function CalendarTab({
   professionals,
   onBackToTimeline,
 }: CalendarTabProps) {
+  console.log('[CalendarTab] Componente montado com:', {
+    eventsCount: events?.length || 0,
+    professionalsCount: professionals?.length || 0
+  })
+
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month')
 
@@ -119,14 +124,48 @@ export function CalendarTab({
   const days = getDaysInMonth()
   const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-  // Filter events for current month
-  const currentMonthEvents = events.filter((event) => {
-    // event.date formato: YYYY-MM-DD
-    const [year, month] = event.date.split('-').map(Number)
-    return (
-      year === currentDate.getFullYear() && month === currentDate.getMonth() + 1
-    )
-  })
+  // Funções auxiliares para comparar datas
+  const isSameDay = (date1: Date, date2: Date) =>
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate();
+
+  const getStartOfWeek = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // segunda como início
+    return new Date(d.setDate(diff));
+  };
+
+  const getEndOfWeek = (date: Date) => {
+    const start = getStartOfWeek(date);
+    return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+  };
+
+  // Filtro de eventos conforme viewMode
+  let filteredEvents: Event[] = [];
+  if (viewMode === 'month') {
+    filteredEvents = events.filter((event) => {
+      const [year, month] = event.date.split('-').map(Number);
+      return (
+        year === currentDate.getFullYear() && month === currentDate.getMonth() + 1
+      );
+    });
+  } else if (viewMode === 'week') {
+    const startOfWeek = getStartOfWeek(currentDate);
+    const endOfWeek = getEndOfWeek(currentDate);
+    filteredEvents = events.filter((event) => {
+      const [year, month, day] = event.date.split('-').map(Number);
+      const eventDate = new Date(year, month - 1, day);
+      return eventDate >= startOfWeek && eventDate <= endOfWeek;
+    });
+  } else if (viewMode === 'day') {
+    filteredEvents = events.filter((event) => {
+      const [year, month, day] = event.date.split('-').map(Number);
+      const eventDate = new Date(year, month - 1, day);
+      return isSameDay(eventDate, currentDate);
+    });
+  }
 
   // Format event for display
   const formatEventForDisplay = (event: Event) => {
@@ -138,14 +177,14 @@ export function CalendarTab({
 
     return {
       id: event.id,
-      title: `${event.type === 'CONSULTATION' ? 'Consulta' : event.type} - ${professional?.name || 'Profissional'}`,
+      title: `${event.type === 'CONSULTATION' ? 'Consulta' : event.type === 'EXAM' ? 'Exame' : event.type} - ${professional?.name || 'Profissional'}`,
       location: professional?.address || 'Endereço não informado',
       date: formattedDate,
       time:
         event.startTime && event.endTime
           ? `${event.startTime} - ${event.endTime}`
           : '',
-      instructions: event.instructions ? 'Sim' : 'Não',
+      observation: event.description || '',
     }
   }
 
@@ -211,23 +250,38 @@ export function CalendarTab({
 
           {/* Days Grid */}
           <div className="grid grid-cols-7 gap-2">
-            {days.map((dayObj, index) => (
-              <div
-                key={index}
-                className={`
-                  h-[60px] flex items-center justify-center text-[14px] rounded cursor-pointer
-                  ${
-                    dayObj.isToday
-                      ? 'bg-[#3182CE] text-white'
-                      : dayObj.isCurrentMonth
-                        ? 'text-[#2D3748] hover:bg-gray-50'
-                        : 'text-[#A0AEC0]'
-                  }
-                `}
-              >
-                {dayObj.day}
-              </div>
-            ))}
+            {days.map((dayObj, index) => {
+              const isSelected =
+                dayObj.isCurrentMonth &&
+                currentDate.getDate() === dayObj.day &&
+                currentDate.getMonth() === new Date().getMonth() &&
+                currentDate.getFullYear() === new Date().getFullYear();
+              return (
+                <div
+                  key={index}
+                  className={`
+                    h-[60px] flex items-center justify-center text-[14px] rounded cursor-pointer
+                    ${
+                      isSelected
+                        ? 'bg-[#3182CE] text-white'
+                        : dayObj.isCurrentMonth
+                          ? 'text-[#2D3748] hover:bg-gray-50'
+                          : 'text-[#A0AEC0]'
+                    }
+                  `}
+                  onClick={() => {
+                    if (dayObj.isCurrentMonth) {
+                      setCurrentDate(
+                        new Date(currentDate.getFullYear(), currentDate.getMonth(), dayObj.day)
+                      );
+                    }
+                  }}
+                  style={{ userSelect: 'none' }}
+                >
+                  {dayObj.day}
+                </div>
+              );
+            })}
           </div>
 
           {/* View Controls */}
@@ -296,8 +350,8 @@ export function CalendarTab({
 
           {/* Events List */}
           <div className="space-y-2">
-            {currentMonthEvents.length > 0 ? (
-              currentMonthEvents.map((event) => {
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map((event) => {
                 const displayEvent = formatEventForDisplay(event)
                 return (
                   <div
@@ -313,7 +367,7 @@ export function CalendarTab({
                         {displayEvent.date} {displayEvent.time}
                       </p>
                       <p className="m-0">
-                        Instruções: {displayEvent.instructions}
+                        Observação: {displayEvent.observation || '—'}
                       </p>
                     </div>
                   </div>
@@ -321,7 +375,7 @@ export function CalendarTab({
               })
             ) : (
               <div className="text-center text-[#718096] py-10">
-                <p className="m-0 text-[12px]">Nenhum evento neste mês.</p>
+                <p className="m-0 text-[12px]">Nenhum evento neste período.</p>
               </div>
             )}
           </div>

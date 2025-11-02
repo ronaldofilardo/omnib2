@@ -116,13 +116,17 @@ export default function App({ authDelayMs }: AppProps = {}) {
 
   // Show Dashboard if logged in
     if (isLoggedIn) {
-      return <Dashboard onLogout={handleLogout} userId={userId} />
+      return <Dashboard onLogout={handleLogout} userId={userId} userRole="RECEPTOR" />
     }
 
   // Show Login Screen
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-xl shadow-lg p-10 w-[350px]">
+        {/* Logo */}
+        <div className="flex justify-center mb-4">
+          <img src="/logo.svg" alt="Logo Omni Saúde" className="h-16 w-auto" />
+        </div>
         {/* Title */}
         <h1 className="text-center text-[#1a1a1a] mb-2">Omni Saúde</h1>
         {/* Subtitle */}

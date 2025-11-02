@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { RepositoryTab } from '../../../src/components/RepositoryTab'
 
@@ -62,7 +62,7 @@ describe('RepositoryTab', () => {
     })
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
     expect(screen.getByText('Repositório de Arquivos')).toBeInTheDocument()
@@ -74,7 +74,7 @@ describe('RepositoryTab', () => {
     ;(global.fetch as any).mockImplementationOnce(() => new Promise(() => {}))
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
     expect(screen.getByText('Carregando repositório...')).toBeInTheDocument()
@@ -87,7 +87,7 @@ describe('RepositoryTab', () => {
     })
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
     await waitFor(() => {
@@ -109,7 +109,7 @@ describe('RepositoryTab', () => {
     })
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
     await waitFor(() => {
@@ -124,7 +124,7 @@ describe('RepositoryTab', () => {
     })
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
     await waitFor(() => {
@@ -151,7 +151,7 @@ describe('RepositoryTab', () => {
     })
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
     await waitFor(() => {
@@ -177,7 +177,7 @@ describe('RepositoryTab', () => {
     })
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
     await waitFor(() => {
@@ -204,7 +204,7 @@ describe('RepositoryTab', () => {
     })
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
     await waitFor(() => {
@@ -227,24 +227,22 @@ describe('RepositoryTab', () => {
     })
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
-    await waitFor(() => {
-      // Verifica slot Solicitação
-      const reqLabel = screen.getByText('Solicitação')
-      expect(reqLabel.closest('div')?.textContent).toContain('Solicitação')
-      expect(reqLabel.closest('div')?.textContent).toContain('requisicao.pdf')
+    // Verifica slot Solicitação
+    const reqLabel = await screen.findByText('Solicitação')
+    expect(reqLabel.closest('div')?.textContent).toContain('Solicitação')
+    expect(reqLabel.closest('div')?.textContent).toContain('requisicao.pdf')
 
-      // Verifica slot Laudo/Resultado
-      const laudoLabel = screen.getByText('Laudo/Resultado')
-      expect(laudoLabel.closest('div')?.textContent).toContain('Laudo/Resultado')
-      expect(laudoLabel.closest('div')?.textContent).toContain('laudo.pdf')
+    // Verifica slot Laudo/Resultado
+    const laudoLabel = screen.getByText('Laudo/Resultado')
+    expect(laudoLabel.closest('div')?.textContent).toContain('Laudo/Resultado')
+    expect(laudoLabel.closest('div')?.textContent).toContain('laudo.pdf')
 
-      // Verifica slot vazio Autorização
-      const autoLabel = screen.getByText('Autorização')
-      expect(autoLabel.closest('div')?.textContent).toContain('Autorização')
-    })
+    // Verifica slot vazio Autorização
+    const autoLabel = screen.getByText('Autorização')
+    expect(autoLabel.closest('div')?.textContent).toContain('Autorização')
   })
 
   it('handles view file action', async () => {
@@ -255,18 +253,16 @@ describe('RepositoryTab', () => {
     })
 
     await act(async () => {
-      render(<RepositoryTab />)
+      render(<RepositoryTab userId="user-1" />)
     })
 
-    await waitFor(() => {
-      const viewButtons = screen.getAllByTitle('Visualizar')
-      fireEvent.click(viewButtons[0])
+    const viewButtons = await screen.findAllByTitle('Visualizar')
+    fireEvent.click(viewButtons[0])
 
-      expect(global.open).toHaveBeenCalledWith(
-        'http://example.com/requisicao.pdf',
-        '_blank'
-      )
-    })
+    expect(global.open).toHaveBeenCalledWith(
+      'http://example.com/requisicao.pdf',
+      '_blank'
+    )
   })
 
   it('handles delete file action', async () => {
@@ -274,34 +270,76 @@ describe('RepositoryTab', () => {
       ok: true,
       json: () => Promise.resolve([mockEvents[0]]),
     })
+    ;(global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockEvents[0]),
+    })
+    ;(global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({}),
+    })
 
-    render(<RepositoryTab />)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    render(<RepositoryTab userId="user-1" />)
 
     await waitFor(() => {
       const deleteButtons = screen.getAllByTitle('Deletar')
       fireEvent.click(deleteButtons[0])
+    })
 
-      expect(global.alert).toHaveBeenCalledWith(
-        "Funcionalidade de deletar o arquivo 'requisicao.pdf' a ser implementada."
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/events',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          }),
+          body: expect.stringContaining('"id":"1"')
+        })
       )
     })
+
+    confirmSpy.mockRestore()
   })
 
-  it('handles upload file action', async () => {
+  it('handles upload file action and updates file list', async () => {
     ;(global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve([mockEvents[0]]),
     })
 
-    render(<RepositoryTab />)
+    render(<RepositoryTab userId="user-1" />)
 
+    const uploadButtons = await screen.findAllByTitle('Upload')
+    expect(uploadButtons.length).toBeGreaterThan(0)
+
+    // Mock para upload
+    ;(global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        success: true,
+        url: 'http://example.com/novo-arquivo.pdf',
+        name: 'novo-arquivo.pdf',
+      }),
+    })
+
+    // Simula seleção de arquivo
+    const file = new File(['conteudo'], 'novo-arquivo.pdf', { type: 'application/pdf' })
+    const input = screen.getAllByTitle('Upload')[0].parentElement?.querySelector('input[type="file"]') as HTMLInputElement
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } })
+    })
+
+    // Após upload, o novo arquivo deve aparecer na lista
+    // (simulação: não há re-fetch, mas o estado local é atualizado)
+    // O nome do novo arquivo deve estar presente
     await waitFor(() => {
-      const uploadButtons = screen.getAllByTitle('Upload')
-      fireEvent.click(uploadButtons[0])
-
-      expect(global.alert).toHaveBeenCalledWith(
-        "Funcionalidade de upload para o slot 'Autorização' a ser implementada."
+      const spans = screen.getAllByText((_, node) => 
+        node?.textContent?.includes('novo-arquivo.pdf') ?? false
       )
+      expect(spans.length).toBeGreaterThan(0)
     })
   })
 
@@ -314,14 +352,13 @@ describe('RepositoryTab', () => {
       text: async () => 'API Error',
     })
 
-    render(<RepositoryTab />)
+    render(<RepositoryTab userId="user-1" />)
 
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Erro ao carregar repositório:',
-        expect.any(Error)
-      )
-    })
+    await screen.findByTestId('repository-tab')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[RepositoryTab] Erro ao carregar repositório:',
+      expect.any(Error)
+    )
 
     consoleSpy.mockRestore()
   })

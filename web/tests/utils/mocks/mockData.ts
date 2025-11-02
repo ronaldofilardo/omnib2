@@ -59,9 +59,9 @@ export const mockUsers = [
 export const mockNotifications = [
   {
     id: '1',
-    title: 'Novo Laudo',
-    message: 'Laudo do exame disponível',
-    type: 'LAUDO',
+    title: 'Novo Resultado',
+    message: 'Resultado do exame disponível',
+    type: 'RESULT',
     userId: 'user-1',
     createdAt: '2025-10-28T10:00:00Z',
     read: false

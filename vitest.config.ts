@@ -9,7 +9,12 @@ export default defineConfig({
     environment: 'happy-dom',
     include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     globals: true,
-    setupFiles: ['./src/test/setup.ts', './src/test/setupFetchMock.ts'],
+    setupFiles: [
+      './src/test/setup.ts',
+      './src/test/setupFetchMock.ts',
+      './web/tests/setup/performance-setup.ts',
+      './web/tests/setup/contract-setup.ts'
+    ],
     coverage: {
       reporter: ['text', 'lcov', 'html'],
       exclude: [

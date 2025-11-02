@@ -1,3 +1,66 @@
+// Função para validar formato de horário (proxy para isValidTimeFormat)
+export function validateTimeFormat(time: string): boolean {
+  return isValidTimeFormat(time);
+}
+
+// Função para validar formato de data (proxy para isValidDateFormat)
+export function validateDateFormat(date: string): boolean {
+  return isValidDateFormat(date);
+}
+
+// Função para checar sobreposição de eventos
+import { prisma } from '@/lib/prisma';
+export async function checkEventOverlap(
+  userId: string,
+  date: string,
+  startTime: string,
+  endTime: string,
+  professionalId: string,
+  eventId?: string
+): Promise<boolean> {
+  const where: any = {
+    userId,
+    date,
+    professionalId,
+  };
+  if (eventId) {
+    where.id = { not: eventId };
+  }
+  const events = await prisma.healthEvent.findMany({
+    where,
+  });
+  return events.some((ev: any) => {
+    if (eventId && ev.id === eventId) return false;
+    // Verifica sobreposição
+    return (
+      (startTime < ev.endTime && endTime > ev.startTime)
+    );
+  });
+}
+
+// Função para validar dados completos de evento
+export function validateEventData(data: any): { isValid: boolean; errors: Record<string, string> } {
+  const errors: Record<string, string> = {};
+  if (!data.title || data.title.trim() === '') errors.title = 'Título obrigatório.';
+  if (!data.date || data.date.trim() === '') errors.date = 'A data é obrigatória.';
+  else if (!validateDateFormat(data.date)) errors.date = 'Formato de data inválido. Use dd/mm/yyyy ou yyyy-MM-dd.';
+  if (!data.type || data.type.trim() === '') errors.type = 'Tipo obrigatório.';
+  if (!data.startTime || data.startTime.trim() === '') errors.startTime = 'Horário de início obrigatório.';
+  else if (!validateTimeFormat(data.startTime)) errors.startTime = 'Formato de horário inválido. Use HH:mm.';
+  if (!data.endTime || data.endTime.trim() === '') errors.endTime = 'Horário de fim obrigatório.';
+  else if (!validateTimeFormat(data.endTime)) errors.endTime = 'Formato de horário inválido. Use HH:mm.';
+  if (
+    data.startTime && data.endTime &&
+    validateTimeFormat(data.startTime) &&
+    validateTimeFormat(data.endTime)
+  ) {
+    const [sh, sm] = data.startTime.split(':').map(Number);
+    const [eh, em] = data.endTime.split(':').map(Number);
+    if (eh * 60 + em <= sh * 60 + sm) errors.endTime = 'Horário de fim deve ser maior que o de início.';
+  }
+  if (!data.professionalId || data.professionalId.trim() === '') errors.professionalId = 'Profissional obrigatório.';
+  return { isValid: Object.keys(errors).length === 0, errors };
+}
 /**
  * Módulo de validação para eventos de saúde
  * Contém validações para data, hora de início e hora de fim

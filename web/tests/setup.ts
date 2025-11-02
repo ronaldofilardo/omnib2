@@ -1,5 +1,18 @@
 import '@testing-library/jest-dom/vitest';
-import { afterEach, beforeAll, afterAll, vi } from 'vitest';
+// Mock do useRouter do next/navigation para testes unitários
+import { vi } from 'vitest';
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    // Adicione outros métodos se necessário
+  }),
+}));
+import { afterEach, beforeAll, afterAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
 // Removido import duplicado de jest-dom - já é configurado em setupJestDom.ts
 

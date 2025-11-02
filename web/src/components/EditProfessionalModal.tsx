@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'

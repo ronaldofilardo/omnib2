@@ -65,7 +65,7 @@ export const createMockNotification = (overrides = {}) => ({
   id: 'mock-notif-id',
   title: 'Mock Notification',
   message: 'Mock message',
-  type: 'LAUDO',
+  type: 'RESULT',
   userId: 'user-1',
   createdAt: '2025-10-28T10:00:00Z',
   read: false,

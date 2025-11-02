@@ -76,6 +76,7 @@ export async function PUT(req: Request) {
 
     // Se notificationId for fornecido, atualizar evento e arquivar notificação em transação
     if (notificationId) {
+      const overwrite = req.headers.get('x-overwrite-result') === 'true';
       const result = await prisma.$transaction(async (tx) => {
         // Buscar evento existente
         const existing = await tx.healthEvent.findUnique({ where: { id } })
@@ -83,12 +84,18 @@ export async function PUT(req: Request) {
           throw new Error('Evento não encontrado')
         }
         // Verificar se já existe laudo no slot result
-        const filesArr = Array.isArray(files) ? files : []
+        const filesArr = Array.isArray(files) ? files : [];
         const alreadyHasResult = Array.isArray(existing.files)
           ? existing.files.some((f: any) => f.slot === 'result')
-          : false
-        if (alreadyHasResult) {
-          throw new Error('Evento já possui laudo associado no slot result')
+          : false;
+        if (alreadyHasResult && !overwrite) {
+          return { conflict: true, message: 'Já existe um laudo para este evento. Deseja sobrescrever?' };
+        }
+        // Permitir sobrescrever: remove o antigo e adiciona o novo
+        let mergedFiles = Array.isArray(existing.files) ? existing.files.filter((f: any) => f.slot !== 'result') : [];
+        for (const f of filesArr) {
+          mergedFiles = mergedFiles.filter((file: any) => file.slot !== f.slot);
+          mergedFiles.push(f);
         }
         // Atualizar evento
         const event = await tx.healthEvent.update({
@@ -101,16 +108,21 @@ export async function PUT(req: Request) {
             endTime,
             type,
             professionalId,
-            files: filesArr,
+            files: mergedFiles,
           },
-        })
+        });
         await tx.notification.update({
           where: { id: notificationId },
           data: { status: 'ARCHIVED' },
-        })
-        return event
-      })
-      console.log(`[API Events] Evento atualizado e notificação arquivada: ${result.id}`)
+        });
+        return event;
+      });
+      if (result && (result as any).conflict) {
+        return NextResponse.json({ warning: (result as any).message }, { status: 409 });
+      }
+      if ((result as any)?.id) {
+        console.log(`[API Events] Evento atualizado e notificação arquivada: ${(result as any).id}`)
+      }
       return NextResponse.json(result, { status: 200 })
     } else {
       const event = await prisma.healthEvent.update({
@@ -164,7 +176,8 @@ const DEFAULT_USER_EMAIL = 'user@email.com'
 // Função utilitária para obter userId do query param
 function getUserIdFromUrl(req: Request): string | null {
   try {
-    const url = new URL(req.url)
+    // Se req.url não for absoluta, adiciona um base
+    const url = req.url.startsWith('http') ? new URL(req.url) : new URL(req.url, 'http://localhost')
     const userId = url.searchParams.get('userId')
     return userId || null
   } catch {
@@ -390,8 +403,11 @@ export async function DELETE(req: Request) {
       for (const file of event.files as any[]) {
         if (file && typeof file === 'object' && 'url' in file && file.url) {
           try {
-            // Extrair o caminho relativo do arquivo da URL
-            const url = new URL(file.url as string)
+            // Extrair o caminho relativo do arquivo da URL (aceita relativa)
+            const rawUrl = String(file.url)
+            const url = rawUrl.startsWith('http')
+              ? new URL(rawUrl)
+              : new URL(rawUrl, 'http://localhost')
             const filePath = url.pathname.replace(
               '/uploads/',
               'public/uploads/'

@@ -72,9 +72,6 @@ describe('/api/repository', () => {
       expect(mockPrisma.healthEvent.findMany).toHaveBeenCalledWith({
         where: {
           userId: 'user-1',
-          files: {
-            not: { equals: '[]' },
-          },
         },
         include: {
           professional: true,

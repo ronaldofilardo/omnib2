@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+"use client";
+"use client";
+import React, { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -23,6 +25,11 @@ export function DeleteEventModal({
   eventTitle,
 }: DeleteEventModalProps) {
   const [deleteFiles, setDeleteFiles] = useState(false)
+
+  // Resetar checkbox sempre que o modal for aberto
+  useEffect(() => {
+    if (open) setDeleteFiles(false)
+  }, [open])
 
   const handleConfirm = () => {
     onConfirm(deleteFiles)

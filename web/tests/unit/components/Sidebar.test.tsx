@@ -11,9 +11,9 @@ describe('Sidebar', () => {
     vi.clearAllMocks()
   })
 
-  const renderComponent = (activeMenu = 'timeline', userId = 'user-1') => {
+  const renderComponent = (activeMenu = 'timeline', userId = 'user-1', userRole = 'RECEPTOR') => {
     return render(
-      <Sidebar activeMenu={activeMenu} onMenuClick={mockOnMenuClick} userId={userId} />
+      <Sidebar activeMenu={activeMenu} onMenuClick={mockOnMenuClick} userId={userId} userRole={userRole} />
     )
   }
 
@@ -155,7 +155,7 @@ describe('Sidebar', () => {
       'bg-[#10B981]'
     )
 
-  rerender(<Sidebar activeMenu="repositorio" onMenuClick={mockOnMenuClick} userId="user-1" />)
+  rerender(<Sidebar activeMenu="repositorio" onMenuClick={mockOnMenuClick} userId="user-1" userRole="RECEPTOR" />)
 
     expect(screen.getByText('Timeline').closest('button')).not.toHaveClass(
       'bg-[#10B981]'
@@ -163,5 +163,108 @@ describe('Sidebar', () => {
     expect(screen.getByText('Repositório').closest('button')).toHaveClass(
       'bg-[#10B981]'
     )
+  })
+
+  describe('User Role Based Menu Rendering', () => {
+    it('renders EMISSOR menu items when userRole is EMISSOR', () => {
+      renderComponent('laudos', 'user-1', 'EMISSOR')
+
+      expect(screen.getByText('Portal de envio')).toBeInTheDocument()
+      expect(screen.getByText('Relatório')).toBeInTheDocument()
+      expect(screen.getByText('Sair')).toBeInTheDocument()
+
+      // Should not render RECEPTOR menu items
+      expect(screen.queryByText('Timeline')).not.toBeInTheDocument()
+      expect(screen.queryByText('Profissionais')).not.toBeInTheDocument()
+      expect(screen.queryByText('Repositório')).not.toBeInTheDocument()
+      expect(screen.queryByText('Calendário')).not.toBeInTheDocument()
+      expect(screen.queryByText('Notificações')).not.toBeInTheDocument()
+      expect(screen.queryByText('Dados Pessoais')).not.toBeInTheDocument()
+    })
+
+    it('renders RECEPTOR menu items when userRole is RECEPTOR', () => {
+      renderComponent('timeline', 'user-1', 'RECEPTOR')
+
+      expect(screen.getByText('Timeline')).toBeInTheDocument()
+      expect(screen.getByText('Profissionais')).toBeInTheDocument()
+      expect(screen.getByText('Repositório')).toBeInTheDocument()
+      expect(screen.getByText('Calendário')).toBeInTheDocument()
+      expect(screen.getByText('Notificações')).toBeInTheDocument()
+      expect(screen.getByText('Dados Pessoais')).toBeInTheDocument()
+      expect(screen.getByText('Sair')).toBeInTheDocument()
+
+      // Should not render EMISSOR menu items
+      expect(screen.queryByText('Portal de envio')).not.toBeInTheDocument()
+      expect(screen.queryByText('Relatório')).not.toBeInTheDocument()
+    })
+
+    it('renders RECEPTOR menu items by default when userRole is empty', () => {
+      renderComponent('timeline', 'user-1', '')
+
+      expect(screen.getByText('Timeline')).toBeInTheDocument()
+      expect(screen.getByText('Profissionais')).toBeInTheDocument()
+      expect(screen.getByText('Repositório')).toBeInTheDocument()
+      expect(screen.getByText('Calendário')).toBeInTheDocument()
+      expect(screen.getByText('Notificações')).toBeInTheDocument()
+      expect(screen.getByText('Dados Pessoais')).toBeInTheDocument()
+      expect(screen.getByText('Sair')).toBeInTheDocument()
+
+      // Should not render EMISSOR menu items
+      expect(screen.queryByText('Portal de envio')).not.toBeInTheDocument()
+      expect(screen.queryByText('Relatório')).not.toBeInTheDocument()
+    })
+
+    it('renders RECEPTOR menu items when userRole is invalid', () => {
+      renderComponent('timeline', 'user-1', 'INVALID_ROLE')
+
+      expect(screen.getByText('Timeline')).toBeInTheDocument()
+      expect(screen.getByText('Profissionais')).toBeInTheDocument()
+      expect(screen.getByText('Repositório')).toBeInTheDocument()
+      expect(screen.getByText('Calendário')).toBeInTheDocument()
+      expect(screen.getByText('Notificações')).toBeInTheDocument()
+      expect(screen.getByText('Dados Pessoais')).toBeInTheDocument()
+      expect(screen.getByText('Sair')).toBeInTheDocument()
+
+      // Should not render EMISSOR menu items
+      expect(screen.queryByText('Portal de envio')).not.toBeInTheDocument()
+      expect(screen.queryByText('Relatório')).not.toBeInTheDocument()
+    })
+
+
+    it('calls onMenuClick com id correto para itens EMISSOR', () => {
+      renderComponent('laudos', 'user-1', 'EMISSOR')
+
+      const portalEnvioLink = screen.getByRole('link', { name: 'Portal de envio' })
+      fireEvent.click(portalEnvioLink)
+      expect(mockOnMenuClick).toHaveBeenCalledWith('laudos')
+
+      const relatorioLink = screen.getByRole('link', { name: 'Relatório' })
+      fireEvent.click(relatorioLink)
+      expect(mockOnMenuClick).toHaveBeenCalledWith('relatorios')
+    })
+
+    it('destaca item ativo para EMISSOR', () => {
+      renderComponent('relatorios', 'user-1', 'EMISSOR')
+
+      const relatorioLink = screen.getByRole('link', { name: 'Relatório' })
+      expect(relatorioLink).toHaveClass('bg-[#10B981]', 'text-white')
+    })
+
+    it('renderiza quantidade correta de links e botões para EMISSOR', () => {
+      renderComponent('laudos', 'user-1', 'EMISSOR')
+
+      const links = screen.getAllByRole('link')
+      expect(links).toHaveLength(2) // 2 menu items
+
+      const buttons = screen.getAllByRole('button')
+      expect(buttons).toHaveLength(1) // apenas o logout
+    })
+
+    it('renders correct number of buttons for RECEPTOR role', () => {
+      renderComponent('timeline', 'user-1', 'RECEPTOR')
+
+      const buttons = screen.getAllByRole('button')
+      expect(buttons).toHaveLength(7) // 6 menu items + 1 logout
+    })
   })
 })

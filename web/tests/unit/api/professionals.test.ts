@@ -9,14 +9,17 @@ describe('POST /api/professionals', () => {
   let createdProfessionalId: string
   let createdUserId: string
 
+  let testCpf: string;
   beforeAll(async () => {
-    // Cria usuário com e-mail aleatório para evitar conflito de chave única
+    // Cria usuário com e-mail e CPF aleatórios para evitar conflito de chave única
     const randomEmail = `user_${Date.now()}_${Math.floor(Math.random()*10000)}@email.com`
+    testCpf = String(Math.floor(10000000000 + Math.random() * 89999999999));
     const user = await prisma.user.create({
       data: {
         email: randomEmail,
         name: 'Usuário Teste',
         password: 'test',
+        cpf: testCpf,
       },
     })
     createdUserId = user.id
@@ -32,12 +35,13 @@ describe('POST /api/professionals', () => {
   })
 
   it('cria um novo profissional', async () => {
+
     const professionalData = {
       name: 'Dr. House',
       specialty: 'Diagnóstico',
       address: '123, Baker Street',
       contact: '999-888-777',
-      // userId não é necessário, pois o handler usa o usuário padrão
+      userId: createdUserId, // Garante que o handler encontra o usuário correto
     }
 
     const request = new Request('http://localhost/api/professionals', {

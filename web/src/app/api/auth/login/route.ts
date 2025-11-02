@@ -16,6 +16,9 @@ export async function POST(request: NextRequest) {
     // Buscar usuário pelo email
     const user = await prisma.user.findUnique({
       where: { email },
+      include: {
+        emissorInfo: true // Incluir informações do emissor, se houver
+      }
     })
 
     if (!user) {
@@ -35,10 +38,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Retornar usuário sem senha
-    const { password: _, ...userWithoutPassword } = user
+  // Retornar usuário sem senha
+  const { password: _, ...userWithoutPassword } = user
 
-    return NextResponse.json({ user: userWithoutPassword }, { status: 200 })
+  // Setar cookie de sessão com o id e role do usuário (ex: id:role)
+  const sessionValue = `${user.id}:${user.role}`;
+  const response = NextResponse.json({ user: userWithoutPassword }, { status: 200 });
+  response.headers.set('Set-Cookie', `kairos_imob_session=${sessionValue}; Path=/; HttpOnly; SameSite=Lax`);
+  return response;
   } catch (error) {
     console.error('Erro ao fazer login:', error)
     return NextResponse.json(

@@ -7,14 +7,17 @@ describe('PUT /api/events', () => {
   let professionalId: string
   let eventId: string
 
+  let testCpf: string;
   beforeAll(async () => {
-    // Cria usuário necessário para o teste
+    // Gera CPF aleatório para evitar conflito de chave única
+    testCpf = String(Math.floor(10000000000 + Math.random() * 89999999999));
     await prisma.user.create({
       data: {
         id: 'user-1',
         email: 'user1@teste.com',
         password: 'senha',
         name: 'Usuário Teste',
+        cpf: testCpf,
       },
     })
     const professional = await prisma.professional.create({

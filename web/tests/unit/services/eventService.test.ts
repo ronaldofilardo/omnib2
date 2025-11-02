@@ -1,15 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-
+import { mockPrisma } from '../../setup/prisma-mock'
 
 vi.mock('../../../src/lib/prisma', () => ({
-  prisma: {
-    healthEvent: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-      findUnique: vi.fn(),
-      update: vi.fn(),
-    },
-  },
+  prisma: mockPrisma,
 }))
 
 import { prisma } from '../../../src/lib/prisma'

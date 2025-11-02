@@ -18,7 +18,7 @@ vi.mock('@/lib/prisma', () => ({
   }
 }))
 
-describe('Criar Evento a partir do Laudo (API)', () => {
+describe('Criar Evento a partir do Resultado (API)', () => {
   const mockUserId = 'test-user-id'
   const mockDoctorName = 'Dr. Teste'
   
@@ -36,14 +36,14 @@ describe('Criar Evento a partir do Laudo (API)', () => {
     // Mock da criação do evento
     ;(prisma.healthEvent.create as any).mockResolvedValue({
       id: 'test-event-id',
-      title: 'Laudo: teste.jpg',
+      title: 'Resultado: teste.jpg',
       type: 'EXAME',
       professionalId: 'test-prof-id'
     })
   })
 
   // eslint-disable-next-line vitest/no-disabled-tests
-  it.skip('cria profissional automaticamente ao criar evento do laudo', async () => {
+  it.skip('cria profissional automaticamente ao criar evento do resultado', async () => {
     const mockProfessionalId = 'test-prof-id'
     const mockEventId = 'test-event-id'
 

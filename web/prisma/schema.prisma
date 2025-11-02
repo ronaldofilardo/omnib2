@@ -7,18 +7,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  RECEPTOR
+  EMISSOR
+}
+
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  password      String
-  name          String?
-  cpf           String?
-  telefone      String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  events        HealthEvent[]
-  professionals Professional[]
-  notifications Notification[]
+  id              String         @id @default(cuid())
+  email           String         @unique
+  password        String
+  name            String?
+  cpf             String? // CPF para usuários receptores (pessoas físicas)
+  telefone        String?
+  role            UserRole       @default(RECEPTOR)
+  emissorInfo     EmissorInfo? // Informações adicionais para usuários emissores
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  events          HealthEvent[]
+  professionals   Professional[]
+  notifications   Notification[]
+  sentReports     Report[]       @relation("SentReports") // Relatórios enviados (para emissores)
+  receivedReports Report[]       @relation("ReceivedReports") // Relatórios recebidos (para receptores)
 
   @@map("users")
 }
@@ -68,15 +77,56 @@ enum NotificationStatus {
   ARCHIVED
 }
 
+model EmissorInfo {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  clinicName String // Nome da clínica/laboratório
+  cnpj       String? // CNPJ da clínica
+  address    String? // Endereço
+  contact    String? // Contato principal
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("emissor_info")
+}
+
+enum ReportStatus {
+  SENT // Enviado pelo emissor
+  RECEIVED // Recebido pelo sistema
+  VIEWED // Visualizado pelo destinatário
+  ARCHIVED // Arquivado
+}
+
+model Report {
+  id             String        @id @default(cuid())
+  protocol       String        @unique // Número do protocolo
+  title          String // Título/descrição do laudo
+  fileName       String // Nome do arquivo
+  fileUrl        String // URL do arquivo
+  status         ReportStatus  @default(SENT)
+  senderId       String // ID do usuário emissor
+  receiverId     String // ID do usuário receptor
+  sender         User          @relation("SentReports", fields: [senderId], references: [id])
+  receiver       User          @relation("ReceivedReports", fields: [receiverId], references: [id])
+  sentAt         DateTime      @default(now()) // Data/hora do envio
+  receivedAt     DateTime? // Data/hora do recebimento
+  viewedAt       DateTime? // Data/hora da visualização
+  notificationId String?       @unique // ID da notificação relacionada
+  notification   Notification? @relation(fields: [notificationId], references: [id])
+
+  @@map("reports")
+}
+
 model Notification {
   id        String             @id @default(cuid())
   userId    String
   type      NotificationType
   payload   Json
+  documento String? // Número do documento do laboratório
   status    NotificationStatus @default(UNREAD)
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
   user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report    Report? // Relação com o relatório
 
   @@index([userId])
   @@index([status])

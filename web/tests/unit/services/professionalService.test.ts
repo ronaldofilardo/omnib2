@@ -1,13 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-
+import { mockPrisma } from '../../setup/prisma-mock'
 
 vi.mock('../../../src/lib/prisma', () => ({
-  prisma: {
-    professional: {
-      create: vi.fn(),
-      findMany: vi.fn(),
-    },
-  },
+  prisma: mockPrisma,
 }))
 
 import { prisma } from '../../../src/lib/prisma'

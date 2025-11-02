@@ -50,6 +50,10 @@ describe('App', () => {
     expect(screen.getByPlaceholderText('Senha')).toBeInTheDocument()
     expect(screen.getByText('Entrar')).toBeInTheDocument()
     expect(screen.getByText('Novo Usuário')).toBeInTheDocument()
+
+    // Verifica se o logotipo está presente
+    const logo = screen.getByAltText(/logo|omni/i)
+    expect(logo).toBeInTheDocument()
   })
 
   it('allows typing in email field', () => {

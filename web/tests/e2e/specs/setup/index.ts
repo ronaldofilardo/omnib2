@@ -13,7 +13,8 @@ export default async function globalSetup() {
     data: {
       email: 'test@example.com',
       password: '$2a$10$VBb3iRxGYh1yQb66JCzKvuoM2AZwbZk0F4f5F4f5F4f5F4f5F4f5F4', // password123
-      name: 'Usuário Teste'
+      name: 'Usuário Teste',
+      cpf: '12345678901', // CPF obrigatório
     }
   })
 

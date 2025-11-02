@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
@@ -34,6 +34,21 @@ export function CreateUserModal({ open, onOpenChange, onRegistered }: CreateUser
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Resetar todos os campos ao fechar o modal
+  useEffect(() => {
+    if (!open) {
+  setFullName('');
+  setCpf('');
+  setPhone('');
+  setEmail('');
+  setPassword('');
+  setShowPassword(false);
+  setShowConfirmClose(false);
+  setSubmitting(false);
+  setError(null);
+    }
+  }, [open]);
+
   // Format CPF: 000.000.000-00
   const formatCPF = (value: string) => {
     const numbers = value.replace(/\D/g, '')
@@ -46,10 +61,16 @@ export function CreateUserModal({ open, onOpenChange, onRegistered }: CreateUser
     return cpf
   }
 
-  // Format Phone: (00) 00000-0000
+  // Format Phone: (00) 00000-0000 ou (00) 0000-0000
   const formatPhone = (value: string) => {
     const numbers = value.replace(/\D/g, '')
-    if (numbers.length <= 11) {
+    if (numbers.length <= 10) {
+      // Telefone fixo: (11) 8765-4321
+      return numbers
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+    } else if (numbers.length === 11) {
+      // Celular: (11) 98765-4321
       return numbers
         .replace(/(\d{2})(\d)/, '($1) $2')
         .replace(/(\d{5})(\d)/, '$1-$2')
@@ -65,9 +86,19 @@ export function CreateUserModal({ open, onOpenChange, onRegistered }: CreateUser
     setPhone(formatPhone(e.target.value))
   }
 
+  // Validar CPF: deve ter 11 dígitos
+  const validateCPF = (cpf: string) => {
+    const numbers = cpf.replace(/\D/g, '')
+    return numbers.length === 11
+  }
+
   const handleSubmit = async () => {
-    if (!email || !password) {
-      setError('E-mail e senha são obrigatórios')
+    if (!email || !password || !cpf) {
+      setError('E-mail, senha e CPF são obrigatórios')
+      return
+    }
+    if (!validateCPF(cpf)) {
+      setError('CPF deve ter 11 dígitos')
       return
     }
     setSubmitting(true)
@@ -76,9 +107,9 @@ export function CreateUserModal({ open, onOpenChange, onRegistered }: CreateUser
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email, 
-          password, 
+        body: JSON.stringify({
+          email,
+          password,
           name: fullName,
           cpf,
           telefone: phone
@@ -92,7 +123,12 @@ export function CreateUserModal({ open, onOpenChange, onRegistered }: CreateUser
       onRegistered?.({ email, name: fullName })
       onOpenChange(false)
     } catch (e: any) {
-      setError(e?.message || 'Erro ao criar usuário')
+      // Sempre mostrar mensagem amigável para erro de rede
+      if (e?.message === 'Network error') {
+        setError('Erro ao criar usuário')
+      } else {
+        setError(e?.message || 'Erro ao criar usuário')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -121,7 +157,7 @@ export function CreateUserModal({ open, onOpenChange, onRegistered }: CreateUser
         <DialogContent className="w-[480px] p-8 bg-white rounded-lg">
           {/* Descrição oculta para acessibilidade */}
           <VisuallyHidden>
-            <DialogDescription />
+            <DialogDescription>Formulário para criação de novo usuário receptor com campos obrigatórios de CPF, email e senha</DialogDescription>
           </VisuallyHidden>
           <VisuallyHidden>
             <DialogTitle>Criar Novo Usuário</DialogTitle>
@@ -145,7 +181,7 @@ export function CreateUserModal({ open, onOpenChange, onRegistered }: CreateUser
             {/* CPF */}
             <Input
               type="text"
-              placeholder="CPF"
+              placeholder="CPF *"
               value={cpf}
               onChange={handleCPFChange}
               maxLength={14}

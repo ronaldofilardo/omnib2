@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog'
 import { Input } from './ui/input'

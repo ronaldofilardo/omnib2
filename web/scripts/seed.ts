@@ -13,6 +13,7 @@ async function main() {
       email: 'user@email.com',
       password: hashedPassword,
       name: 'Usuário Padrão',
+      cpf: '12345678901', // CPF fictício para seed
     },
   })
   console.log('Resultado do upsert:', result)

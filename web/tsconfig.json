@@ -40,6 +40,13 @@
     ".next\\dev/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "tests",
+    "tests/**/*",
+    "src/test",
+    "src/test/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/setup*.ts"
   ]
 }

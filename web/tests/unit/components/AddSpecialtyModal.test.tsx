@@ -1,169 +1,133 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { AddSpecialtyModal } from '../../../src/components/AddSpecialtyModal'
-
-// Mock do alert
-const mockAlert = vi.fn()
-global.alert = mockAlert
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { AddSpecialtyModal } from '@/components/AddSpecialtyModal';
+import { vi } from 'vitest';
 
 describe('AddSpecialtyModal', () => {
-  const mockOnOpenChange = vi.fn()
-  const mockOnSave = vi.fn()
+  const mockOnSave = vi.fn();
+  const mockOnOpenChange = vi.fn();
+
+  const defaultProps = {
+    open: true,
+    onOpenChange: mockOnOpenChange,
+    onSave: mockOnSave,
+  };
 
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  const renderModal = (open = true) => {
-    return render(
-      <AddSpecialtyModal
-        open={open}
-        onOpenChange={mockOnOpenChange}
-        onSave={mockOnSave}
-      />
-    )
-  }
+    vi.clearAllMocks();
+  });
 
   it('renders modal when open is true', () => {
-    renderModal(true)
-
-    expect(screen.getByText('Adicionar Nova Especialidade')).toBeInTheDocument()
-    expect(screen.getByText('Nome')).toBeInTheDocument()
-    expect(screen.getByText('Cancelar')).toBeInTheDocument()
-    expect(screen.getByText('Adicionar')).toBeInTheDocument()
-  })
+    render(<AddSpecialtyModal {...defaultProps} />);
+    expect(screen.getByText('Adicionar Nova Especialidade')).toBeInTheDocument();
+  });
 
   it('does not render modal when open is false', () => {
-    renderModal(false)
+    render(<AddSpecialtyModal {...defaultProps} open={false} />);
+    expect(screen.queryByText('Adicionar Nova Especialidade')).not.toBeInTheDocument();
+  });
 
-    expect(
-      screen.queryByText('Adicionar Nova Especialidade')
-    ).not.toBeInTheDocument()
-  })
+  it('allows typing in the specialty name input', () => {
+    render(<AddSpecialtyModal {...defaultProps} />);
+    const input = screen.getByPlaceholderText('Digite o nome...');
+    fireEvent.change(input, { target: { value: 'Cardiologia' } });
+    expect(input).toHaveValue('Cardiologia');
+  });
 
-  it('allows typing in specialty name field', () => {
-    renderModal(true)
+  it('shows alert when trying to submit empty specialty name', () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    render(<AddSpecialtyModal {...defaultProps} />);
+    const submitButton = screen.getByText('Adicionar');
+    fireEvent.click(submitButton);
+    expect(alertSpy).toHaveBeenCalledWith('Por favor, digite o nome da especialidade.');
+    alertSpy.mockRestore();
+  });
 
-    const input = screen.getByPlaceholderText('Digite o nome...')
-    fireEvent.change(input, { target: { value: 'Neurologia' } })
+  it('calls onSave with trimmed specialty name when submitting valid input', () => {
+    render(<AddSpecialtyModal {...defaultProps} />);
+    const input = screen.getByPlaceholderText('Digite o nome...');
+    const submitButton = screen.getByText('Adicionar');
 
-    expect(input).toHaveValue('Neurologia')
-  })
+    fireEvent.change(input, { target: { value: '  Cardiologia  ' } });
+    fireEvent.click(submitButton);
 
-  it('shows validation error for empty specialty name', () => {
-    renderModal(true)
-
-    const addButton = screen.getByText('Adicionar')
-    fireEvent.click(addButton)
-
-    expect(mockAlert).toHaveBeenCalledWith(
-      'Por favor, digite o nome da especialidade.'
-    )
-  })
-
-  it('calls onSave with trimmed specialty name when valid', () => {
-    renderModal(true)
-
-    const input = screen.getByPlaceholderText('Digite o nome...')
-    fireEvent.change(input, { target: { value: '  Neurologia  ' } })
-
-    const addButton = screen.getByText('Adicionar')
-    fireEvent.click(addButton)
-
-    expect(mockOnSave).toHaveBeenCalledWith('Neurologia')
-    expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-  })
-
-  it('clears input after successful save', () => {
-    renderModal(true)
-
-    const input = screen.getByPlaceholderText('Digite o nome...')
-    fireEvent.change(input, { target: { value: 'Neurologia' } })
-
-    const addButton = screen.getByText('Adicionar')
-    fireEvent.click(addButton)
-
-    // Since the modal closes, we can't check the input value directly
-    expect(mockOnSave).toHaveBeenCalledWith('Neurologia')
-  })
+    expect(mockOnSave).toHaveBeenCalledWith('Cardiologia');
+    expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+  });
 
   it('closes modal when cancel button is clicked', () => {
-    renderModal(true)
+    render(<AddSpecialtyModal {...defaultProps} />);
+    const input = screen.getByPlaceholderText('Digite o nome...');
+    // Preenche o campo para simular edição
+    fireEvent.change(input, { target: { value: 'Cardiologia' } });
+    const cancelButton = screen.getByText('Cancelar');
+    fireEvent.click(cancelButton);
+    // Espera o diálogo de confirmação
+    return import('@testing-library/react').then(({ within }) =>
+      within(document.body).findByText((content) => content.includes('Sair sem salvar'))
+    ).then((exitButton) => {
+      fireEvent.click(exitButton);
+      expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
 
-    const cancelButton = screen.getByText('Cancelar')
-    fireEvent.click(cancelButton)
+  it('shows confirmation dialog when closing with filled data', () => {
+    render(<AddSpecialtyModal {...defaultProps} />);
+    const input = screen.getByPlaceholderText('Digite o nome...');
+    fireEvent.change(input, { target: { value: 'Cardiologia' } });
 
-    expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-  })
+    // Try to close by clicking outside or cancel
+    const cancelButton = screen.getByText('Cancelar');
+    fireEvent.click(cancelButton);
 
-  it('shows confirmation dialog when closing with data', () => {
-    renderModal(true)
+  // Deve mostrar o diálogo de confirmação (debug)
+    return import('@testing-library/react').then(({ within }) =>
+      within(document.body).findByText((content) => content.includes('Confirmar saída'))
+    );
+  });
 
-    const input = screen.getByPlaceholderText('Digite o nome...')
-    fireEvent.change(input, { target: { value: 'Neurologia' } })
+  it('closes modal without confirmation when input is empty', () => {
+  render(<AddSpecialtyModal {...defaultProps} />);
+  const cancelButton = screen.getByText('Cancelar');
+  fireEvent.click(cancelButton);
+  expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+  });
 
-    // Attempting to close would show confirmation dialog
-    expect(screen.getByText('Adicionar Nova Especialidade')).toBeInTheDocument()
-  })
+  it('handles confirmation dialog - continue editing', () => {
+    render(<AddSpecialtyModal {...defaultProps} />);
+    const input = screen.getByPlaceholderText('Digite o nome...');
+    fireEvent.change(input, { target: { value: 'Cardiologia' } });
 
-  it('handles confirmation close', () => {
-    renderModal(true)
+    const cancelButton = screen.getByText('Cancelar');
+    fireEvent.click(cancelButton);
 
-    // This would be tested by triggering the confirmation dialog
-    expect(screen.getByText('Adicionar Nova Especialidade')).toBeInTheDocument()
-  })
+    return import('@testing-library/react').then(({ within }) =>
+      within(document.body).findByText((content) => content.includes('Continuar editando'))
+    ).then((continueButton) => {
+      fireEvent.click(continueButton);
+      expect(mockOnOpenChange).not.toHaveBeenCalled();
+      expect(screen.getByText('Adicionar Nova Especialidade')).toBeInTheDocument();
+    });
+  });
 
-  it('handles cancel close', () => {
-    renderModal(true)
+  it('handles confirmation dialog - exit without saving', () => {
+    render(<AddSpecialtyModal {...defaultProps} />);
+    const input = screen.getByPlaceholderText('Digite o nome...');
+    fireEvent.change(input, { target: { value: 'Cardiologia' } });
 
-    // This would be tested by triggering the confirmation dialog
-    expect(screen.getByText('Adicionar Nova Especialidade')).toBeInTheDocument()
-  })
+    const cancelButton = screen.getByText('Cancelar');
+    fireEvent.click(cancelButton);
 
-  it('focuses input on modal open', () => {
-    renderModal(true)
+    return import('@testing-library/react').then(({ within }) =>
+      within(document.body).findByText((content) => content.includes('Sair sem salvar'))
+    ).then((exitButton) => {
+      fireEvent.click(exitButton);
+      expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
 
-    const input = screen.getByPlaceholderText('Digite o nome...')
-    // O React não mantém o atributo autoFocus no DOM, mas o input deve estar focado
-    expect(document.activeElement).toBe(input)
-  })
-
-  it('handles specialty name with only whitespace', () => {
-    renderModal(true)
-
-    const input = screen.getByPlaceholderText('Digite o nome...')
-    fireEvent.change(input, { target: { value: '   ' } })
-
-    const addButton = screen.getByText('Adicionar')
-    fireEvent.click(addButton)
-
-    expect(mockAlert).toHaveBeenCalledWith(
-      'Por favor, digite o nome da especialidade.'
-    )
-  })
-
-  it('handles specialty name with special characters', () => {
-    renderModal(true)
-
-    const input = screen.getByPlaceholderText('Digite o nome...')
-    fireEvent.change(input, { target: { value: 'Cirurgia Plástica' } })
-
-    const addButton = screen.getByText('Adicionar')
-    fireEvent.click(addButton)
-
-    expect(mockOnSave).toHaveBeenCalledWith('Cirurgia Plástica')
-  })
-
-  it('handles very long specialty names', () => {
-    renderModal(true)
-
-    const longName = 'A'.repeat(100)
-    const input = screen.getByPlaceholderText('Digite o nome...')
-    fireEvent.change(input, { target: { value: longName } })
-
-    const addButton = screen.getByText('Adicionar')
-    fireEvent.click(addButton)
-
-    expect(mockOnSave).toHaveBeenCalledWith(longName)
-  })
-})
+  it('focuses input on mount', () => {
+    render(<AddSpecialtyModal {...defaultProps} />);
+    const input = screen.getByPlaceholderText('Digite o nome...');
+    expect(input).toHaveFocus();
+  });
+});

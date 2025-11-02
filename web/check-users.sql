@@ -1,0 +1,1 @@
+SELECT id, email, name, cpf, role FROM users;

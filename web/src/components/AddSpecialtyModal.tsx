@@ -1,3 +1,4 @@
+"use client";
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
@@ -40,7 +41,11 @@ export function AddSpecialtyModal({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setShowConfirmClose(true)
+      if (specialtyName.trim()) {
+        setShowConfirmClose(true)
+      } else {
+        onOpenChange(false)
+      }
     } else {
       onOpenChange(newOpen)
     }
@@ -83,7 +88,7 @@ export function AddSpecialtyModal({
             {/* Buttons */}
             <div className="flex gap-3">
               <Button
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
                 variant="outline"
                 className="flex-1 h-12 bg-white border border-[#D1D5DB] text-[#6B7280] hover:bg-gray-50 rounded"
               >

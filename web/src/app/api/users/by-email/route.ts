@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: Request) {
-  const url = new URL(request.url)
+  const url = request.url.startsWith('http') ? new URL(request.url) : new URL(request.url, 'http://localhost')
   const email = url.searchParams.get('email')
   if (!email) {
     return NextResponse.json({ error: 'E-mail não informado.' }, { status: 400 })

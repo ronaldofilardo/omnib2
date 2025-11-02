@@ -1,3 +1,4 @@
+"use client";
 import { Eye, FileText, Edit, Trash2, UploadCloud, Copy } from 'lucide-react'
 import React, { useState } from 'react'
 import Image from 'next/image'
@@ -78,7 +79,11 @@ export function EventCard({
   onUpdate,
 }: EventCardProps) {
   const eventId = event.id
-  const initialFiles = event.files
+  const initialFiles = Array.isArray(event.files)
+    ? event.files
+    : typeof event.files === 'string'
+      ? JSON.parse(event.files || '[]')
+      : [];
   const title =
     event.type === 'CONSULTATION'
       ? 'Consulta'
@@ -95,13 +100,13 @@ export function EventCard({
       : ''
   console.log('[EventCard] Event type:', event.type, 'Title:', title, 'Professional:', professional)
   console.log('[EventCard] Full title string:', `${title} - ${professional} - ${time}`)
-  const instructions = event.observation || ''
+  const instructions = event.description || ''
   const [showViewModal, setShowViewModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showFilesModal, setShowFilesModal] = useState(false)
   const filesMap =
     initialFiles?.reduce(
-      (map, file) => {
+      (map: Record<string, { slot: string; name: string; url: string }>, file: { slot: string; name: string; url: string }) => {
         map[file.slot] = file
         return map
       },
@@ -150,7 +155,7 @@ export function EventCard({
                 <Copy className="w-4 h-4" />
               </button>
             </div>
-            <div className="text-[14px] font-semibold text-[#3B82F6] cursor-pointer">
+            <div className="text-[14px] font-semibold text-[#111827] cursor-pointer">
               Instruções: {instructions}
             </div>
           </div>

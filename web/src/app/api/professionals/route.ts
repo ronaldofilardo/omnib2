@@ -58,7 +58,8 @@ export async function PUT(req: Request) {
 }
 
 export async function GET(request: Request) {
-  const url = new URL(request.url)
+  // Garante que a URL seja absoluta
+  const url = request.url.startsWith('http') ? new URL(request.url) : new URL(request.url, 'http://localhost')
   const type = url.searchParams.get('type')
 
   if (type === 'specialties') {
@@ -105,9 +106,10 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const body = await req.json()
-    const userId = body.userId || await getDefaultUserId()
-    const { id } = body
+    // Garante que a URL seja absoluta
+    const url = req.url.startsWith('http') ? new URL(req.url) : new URL(req.url, 'http://localhost')
+    const id = url.searchParams.get('id')
+    const userId = url.searchParams.get('userId') || await getDefaultUserId()
     if (!id) {
       return NextResponse.json(
         { error: 'ID do profissional é obrigatório.' },
@@ -117,7 +119,7 @@ export async function DELETE(req: Request) {
     await prisma.professional.delete({
       where: {
         id,
-        userId, // Garante que o profissional pertence ao usuário
+        userId,
       },
     })
     return NextResponse.json({ success: true })

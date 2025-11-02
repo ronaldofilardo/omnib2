@@ -1,3 +1,4 @@
+"use client";
 import { useState } from 'react'
 import { Button } from './ui/button'
 import { Plus } from 'lucide-react'
@@ -109,10 +110,8 @@ export function ProfessionalsTab(props: ProfessionalsTabProps) {
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este profissional?')) {
       try {
-        const response = await fetch(`/api/professionals?userId=${encodeURIComponent(userId)}`, {
+        const response = await fetch(`/api/professionals?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(userId)}`, {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
         })
         if (!response.ok) throw new Error('Erro ao excluir profissional')
         setProfessionals(professionals.filter((p) => p.id !== id))

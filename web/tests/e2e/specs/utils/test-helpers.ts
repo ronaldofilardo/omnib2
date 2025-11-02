@@ -1,13 +1,21 @@
 import { Page, expect } from '@playwright/test'
 
-export async function login(page: Page) {
+export async function login(page: Page, email = 'test@example.com', password = 'password123') {
   await page.goto('/')
   // Preenche as credenciais na tela de login
-  await page.getByPlaceholder('usuário@email.com').fill('test@example.com')
-  await page.getByPlaceholder('Senha').fill('password123')
+  await page.getByPlaceholder('usuário@email.com').fill(email)
+  await page.getByPlaceholder('Senha').fill(password)
   await page.getByRole('button', { name: 'Entrar' }).click()
   // Espera o dashboard aparecer (sidebar com texto OmniSaúde)
   await expect(page.getByText('OmniSaúde')).toBeVisible()
+}
+
+export async function loginAsEmissor(page: Page) {
+  await login(page, 'emissor@example.com', 'password123')
+}
+
+export async function loginAsReceptor(page: Page) {
+  await login(page, 'receptor@example.com', 'password123')
 }
 
 export async function logout(page: Page) {

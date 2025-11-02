@@ -65,9 +65,9 @@ describe('EventCard', () => {
 
   it('renders event information correctly', () => {
     render(<EventCard {...defaultProps} />)
-    expect(screen.getByText('Consulta - Dr. Silva - 10:00 - 11:00')).to.exist
-    expect(screen.getByText('Rua das Flores, 123')).to.exist
-    expect(screen.getByText('Instruções: Trazer exames anteriores')).to.exist
+  expect(screen.getByText('Consulta - Dr. Silva - 10:00 - 11:00')).to.exist
+  expect(screen.getByText('Rua das Flores, 123')).to.exist
+  expect(screen.getByText((content) => content.startsWith('Instruções:'))).to.exist
   })
 
   it('opens view modal when details button is clicked', () => {

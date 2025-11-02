@@ -6,6 +6,17 @@ import { randomUUID } from 'crypto'
 // Configurações de upload para MVP (máximo 2KB)
 const MAX_FILE_SIZE = 2 * 1024 // 2048 bytes = 2KB
 
+// Tipos de arquivo permitidos
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp'
+]
+
+// Pasta para armazenar uploads
+const UPLOADS_DIR = join(process.cwd(), 'public', 'uploads')
+
 
 
 export async function POST(req: NextRequest) {

@@ -82,7 +82,22 @@ beforeAll(() => {
   vi.stubGlobal('fetch', async (input: string | Request, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input.url
     const method = (init?.method || 'GET') as HttpMethod
-    const body = init?.body ? JSON.parse(init.body.toString()) : undefined
+    
+    // Parse body - handle FormData separately
+    let body: any = undefined
+    if (init?.body) {
+      if (init.body instanceof FormData) {
+        // Keep FormData as is - don't try to parse it
+        body = init.body
+      } else {
+        try {
+          body = JSON.parse(init.body.toString())
+        } catch {
+          // If parse fails, keep as string
+          body = init.body.toString()
+        }
+      }
+    }
 
     // Procura handler estático
     let handler = routeHandlers.get(url)?.[method]

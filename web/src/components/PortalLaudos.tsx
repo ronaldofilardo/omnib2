@@ -1,0 +1,109 @@
+'use client';
+
+import { useState } from 'react';
+import { Upload, FileText } from 'lucide-react';
+
+interface Laudo {
+  id: string;
+  fileName: string;
+  uploadedAt: string;
+  status: 'processing' | 'completed' | 'error';
+}
+
+export function PortalLaudos() {
+  const [laudos, setLaudos] = useState<Laudo[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', files[0]);
+
+      const response = await fetch('/api/laudos/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao enviar arquivo');
+      }
+
+      const data = await response.json();
+      setLaudos((prev) => [...prev, data]);
+    } catch (error) {
+      console.error('Erro ao enviar laudo:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      {/* Upload Section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-center w-full">
+          <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              <Upload className="w-10 h-10 mb-3 text-gray-400" />
+              <p className="mb-2 text-sm text-gray-500">
+                <span className="font-semibold">Clique para enviar</span> ou arraste e solte
+              </p>
+              <p className="text-xs text-gray-500">PDF, DOC, DOCX (MAX. 10MB)</p>
+            </div>
+            <input
+              id="dropzone-file"
+              type="file"
+              className="hidden"
+              accept=".pdf,.doc,.docx"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+              data-testid="file-input"
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Files List */}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold mb-4">Laudos Enviados</h3>
+        <div className="space-y-4">
+          {laudos.map((laudo) => (
+            <div
+              key={laudo.id}
+              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+            >
+              <div className="flex items-center gap-3">
+                <FileText className="w-5 h-5 text-gray-500" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{laudo.fileName}</p>
+                  <p className="text-xs text-gray-500">
+                    Enviado em {new Date(laudo.uploadedAt).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+              <span
+                className={`px-2 py-1 text-xs rounded ${
+                  laudo.status === 'completed'
+                    ? 'bg-green-100 text-green-800'
+                    : laudo.status === 'error'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}
+              >
+                {laudo.status === 'completed'
+                  ? 'Concluído'
+                  : laudo.status === 'error'
+                  ? 'Erro'
+                  : 'Processando'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

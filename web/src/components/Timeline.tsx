@@ -60,7 +60,7 @@ export const Timeline = memo(function Timeline({
       const [bYear, bMonth, bDay] = bDate.split('-').map(Number)
       const aLocal = new Date(aYear, aMonth - 1, aDay).getTime()
       const bLocal = new Date(bYear, bMonth - 1, bDay).getTime()
-      return aLocal - bLocal
+      return bLocal - aLocal
     })
     const grouped = sortedEvents.reduce(
       (acc, event) => {
