@@ -91,7 +91,6 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
         ? notification.payload.doctorName
         : '';
       let finalProfessionalId: string;
-      
       if (selectedProfessional) {
         // Usa o profissional selecionado
         finalProfessionalId = selectedProfessional;
@@ -107,8 +106,17 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
           })
         });
         const createdProf = await createRes.json();
+        if (!createRes.ok) {
+          setError(createdProf?.error || 'Erro ao criar profissional.');
+          setLoading(false);
+          return;
+        }
         finalProfessionalId = createdProf?.id || createdProf?.insertedId;
-        if (!finalProfessionalId) throw new Error('Não foi possível criar o profissional.');
+        if (!finalProfessionalId) {
+          setError('Não foi possível criar o profissional.');
+          setLoading(false);
+          return;
+        }
       }
 
       // 2. Criar evento com o id do profissional recém-criado (sem arquivos ainda)
@@ -127,7 +135,12 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
           notificationId: notification.id
         })
       });
-      if (!res.ok) throw new Error('Erro ao criar evento.');
+      if (!res.ok) {
+        const err = await res.json();
+        setError(err?.error || 'Erro ao criar evento.');
+        setLoading(false);
+        return;
+      }
       const createdEvent = await res.json();
       const eventId = createdEvent.id;
 
@@ -215,7 +228,7 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
       onSuccess();
       onClose();
     } catch (e) {
-  setError('Erro ao criar evento.');
+    setError(e instanceof Error ? e.message : 'Erro ao criar evento.');
     } finally {
       setLoading(false);
     }
