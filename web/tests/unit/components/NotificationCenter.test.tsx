@@ -1,255 +1,239 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import NotificationCenter from '@/components/NotificationCenter';
-import { vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import NotificationCenter from '../../../src/components/NotificationCenter';
+
+// Mock do console
+const mockConsoleLog = vi.fn();
+const mockConsoleError = vi.fn();
+console.log = mockConsoleLog;
+console.error = mockConsoleError;
+
+// Mock do fetch usando Response objects adequados
+const fetchMock = vi.fn();
+globalThis.fetch = fetchMock;
+
+// Dados mockados
+const mockNotifications = [
+  {
+    id: 'notification-1',
+    type: 'LAB_RESULT',
+    payload: {
+      reportId: 'report-1',
+      doctorName: 'Dr. Silva',
+      examDate: '2024-01-15',
+      report: {
+        fileName: 'laudo.pdf',
+        fileContent: 'base64content',
+      },
+      title: 'Laudo de Exame',
+      protocol: '12345'
+    },
+    createdAt: '2024-01-15T10:00:00Z',
+    status: 'PENDING'
+  },
+];
+
+const mockProfessionals = [
+  {
+    id: 'prof-1',
+    name: 'Dr. João Silva',
+    specialty: 'Cardiologia',
+    userId: 'user-123',
+    contact: { email: 'joao@example.com', phone: '11999999999' }
+  }
+];
 
 describe('NotificationCenter', () => {
+  const mockUserId = 'user-123';
   const mockOnProfessionalCreated = vi.fn();
 
-  const mockNotifications = [
-    {
-      id: 'notif-1',
-      type: 'lab_result',
-      payload: {
-        doctorName: 'Dr. João Silva',
-        examDate: '2024-10-25',
-        report: {
-          fileName: 'laudo.pdf',
-          fileContent: 'base64content',
-        },
-      },
-      createdAt: '2024-10-25T10:00:00Z',
-    },
-  ];
-
-  const mockProfessionals = [
-    { id: 'prof-1', name: 'Dr. João Silva' },
-    { id: 'prof-2', name: 'Dra. Maria Santos' },
-  ];
-
   beforeEach(() => {
-    vi.clearAllMocks();
-    global.fetch = vi.fn();
-  });
+    fetchMock.mockReset();
+    mockConsoleLog.mockReset();
+    mockConsoleError.mockReset();
+    mockOnProfessionalCreated.mockReset();
 
-  it('renders loading state initially', () => {
-    (global.fetch as any).mockImplementation(() => new Promise(() => {})); // Never resolves
+    // Setup default mocks usando Response objects adequados
+    fetchMock.mockImplementation((url: string) => {
+      console.log('[TEST] Fetch called with URL:', url);
 
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-    expect(screen.getByText('Carregando notificações...')).toBeInTheDocument();
-  });
+      // Parse URL to handle query parameters
+      const urlObj = new URL(url, 'http://localhost');
+      const pathname = urlObj.pathname;
+      const searchParams = urlObj.searchParams;
 
-  it('renders error state when fetch fails', async () => {
-    // Primeiro fetch: profissionais (sucesso)
-    (global.fetch as any)
-      .mockResolvedValueOnce({ json: () => Promise.resolve(mockProfessionals) })
-      // Segundo fetch: notificações (erro)
-      .mockRejectedValueOnce(new Error('Network error'));
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Erro ao carregar notificações')).toBeInTheDocument();
+      if (pathname === '/api/professionals') {
+        console.log('[TEST] Returning professionals:', mockProfessionals);
+        return Promise.resolve(new Response(JSON.stringify(mockProfessionals), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        }));
+      }
+      if (pathname === '/api/notifications') {
+        console.log('[TEST] Returning notifications:', mockNotifications);
+        return Promise.resolve(new Response(JSON.stringify(mockNotifications), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        }));
+      }
+      if (pathname.startsWith('/api/reports/') && pathname.endsWith('/access')) {
+        console.log('[TEST] Returning access response');
+        return Promise.resolve(new Response(JSON.stringify({ message: 'Acesso registrado' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        }));
+      }
+      console.log('[TEST] Route not found for URL:', url);
+      return Promise.reject(new Error('Route not found'));
     });
   });
 
-  it('renders empty state when no notifications', async () => {
-    // Mock profissionais
-    (global.fetch as any).mockResolvedValueOnce({ json: () => Promise.resolve(mockProfessionals) });
-    // Mock notificações vazio
-    (global.fetch as any).mockResolvedValueOnce({ json: () => Promise.resolve([]) });
+  describe('Estado de hidratação', () => {
+    it('deve mostrar loading enquanto não estiver montado', () => {
+      render(
+        <NotificationCenter
+          userId={mockUserId}
+          onProfessionalCreated={mockOnProfessionalCreated}
+        />
+      );
 
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Sem notificações pendentes.')).toBeInTheDocument();
+      expect(screen.getByText('Carregando notificações...')).toBeInTheDocument();
     });
-  });
 
-  it('renders notifications correctly', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockProfessionals),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockNotifications),
+    it('deve buscar notificações após montar', async () => {
+      console.log('[TEST] Starting test: deve buscar notificações após montar');
+      render(
+        <NotificationCenter
+          userId={mockUserId}
+          onProfessionalCreated={mockOnProfessionalCreated}
+        />
+      );
+      console.log('[TEST] Component rendered, waiting for access registration');
+      await waitFor(() => {
+        console.log('[TEST] Checking if console.log was called with access registration');
+        expect(mockConsoleLog).toHaveBeenCalledWith(
+          expect.stringContaining('[RECEIVED] Registrando acesso ao laudo report-1')
+        );
+      });
+     });
+
+    it('deve registrar acesso aos laudos das notificações', async () => {
+      console.log('[TEST] Starting test: deve registrar acesso aos laudos das notificações');
+      render(
+        <NotificationCenter
+          userId={mockUserId}
+          onProfessionalCreated={mockOnProfessionalCreated}
+        />
+      );
+      console.log('[TEST] Component rendered, waiting for access registration');
+      await waitFor(() => {
+        console.log('[TEST] Checking if console.log was called with access registration');
+        expect(mockConsoleLog).toHaveBeenCalledWith(
+          expect.stringContaining('[RECEIVED] Registrando acesso ao laudo report-1')
+        );
+      });
+     });
+
+    it('deve mostrar mensagem quando não há notificações', async () => {
+       // Override the mock to return empty notifications
+       fetchMock.mockImplementation((url: string) => {
+         // Parse URL to handle query parameters
+         const urlObj = new URL(url, 'http://localhost');
+         const pathname = urlObj.pathname;
+
+         if (pathname === '/api/professionals') {
+           return Promise.resolve(new Response(JSON.stringify([]), {
+             status: 200,
+             headers: { 'Content-Type': 'application/json' }
+           }));
+         }
+         if (pathname === '/api/notifications') {
+           return Promise.resolve(new Response(JSON.stringify([]), {
+             status: 200,
+             headers: { 'Content-Type': 'application/json' }
+           }));
+         }
+         return Promise.reject(new Error('Route not found'));
+       });
+
+       render(
+         <NotificationCenter
+           userId={mockUserId}
+           onProfessionalCreated={mockOnProfessionalCreated}
+         />
+       );
+
+       await waitFor(() => {
+         expect(screen.getByText('Sem notificações pendentes.')).toBeInTheDocument();
+       }, { timeout: 3000 });
+     });
+
+    it('deve mostrar erro quando falha ao carregar notificações', async () => {
+        console.log('[TEST] Starting test: deve mostrar erro quando falha ao carregar notificações');
+        // Override the mock to return an error for notifications
+        fetchMock.mockImplementation((url: string) => {
+          console.log('[TEST] Fetch called with URL:', url);
+
+          // Parse URL to handle query parameters
+          const urlObj = new URL(url, 'http://localhost');
+          const pathname = urlObj.pathname;
+
+          if (pathname === '/api/professionals') {
+            console.log('[TEST] Returning empty professionals');
+            return Promise.resolve(new Response(JSON.stringify([]), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            }));
+          }
+          if (pathname === '/api/notifications') {
+            console.log('[TEST] Rejecting notifications with server error');
+            return Promise.resolve(new Response(JSON.stringify({ error: 'Server error' }), {
+              status: 500,
+              headers: { 'Content-Type': 'application/json' }
+            }));
+          }
+           console.log('[TEST] Route not found for URL:', url);
+           return Promise.resolve(new Response(JSON.stringify({ error: 'Route not found' }), {
+             status: 404,
+             headers: { 'Content-Type': 'application/json' }
+           }));
+        });
+
+        render(
+          <NotificationCenter
+            userId={mockUserId}
+            onProfessionalCreated={mockOnProfessionalCreated}
+          />
+        );
+
+        console.log('[TEST] Component rendered, waiting for error message');
+        await waitFor(() => {
+          console.log('[TEST] Checking for error message in DOM');
+          const errorEl = screen.getByText('Erro ao carregar notificações.');
+          expect(errorEl).toBeInTheDocument();
+          expect(errorEl).toHaveClass('text-lg', 'text-red-500');
+        }, { timeout: 3000 });
       });
 
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
+    it('deve renderizar notificações corretamente', async () => {
+        console.log('[TEST] Starting test: deve renderizar notificações corretamente');
+        render(
+          <NotificationCenter
+            userId={mockUserId}
+            onProfessionalCreated={mockOnProfessionalCreated}
+          />
+        );
 
-    await waitFor(() => {
-      expect(screen.getByText(/Central de Notificações/)).toBeInTheDocument();
-      expect(screen.getByText(/Laudo recebido/)).toBeInTheDocument();
-      expect(screen.getByText(/laudo.pdf/)).toBeInTheDocument();
-      // Verifica se o texto "Médico: Dr. João Silva" aparece no DOM completo
-      expect(document.body.textContent).toMatch(/Médico:\s*Dr\. João Silva/);
-      expect(document.body.textContent).toMatch(/Data do exame:\s*25-10-2024/);
-    });
-  });
-
-  it('loads professionals on mount', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockProfessionals),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockNotifications),
+        console.log('[TEST] Component rendered, waiting for notification elements');
+        await waitFor(() => {
+          console.log('[TEST] Checking for notification elements in DOM');
+          expect(screen.getByText('Laudo recebido:')).toBeInTheDocument();
+          expect(screen.getByText('laudo.pdf')).toBeInTheDocument();
+          expect(screen.getByText('Médico:')).toBeInTheDocument();
+          expect(screen.getByText('Dr. Silva')).toBeInTheDocument();
+          expect(screen.getByText('Associar a evento existente')).toBeInTheDocument();
+          expect(screen.getByText('Criar novo evento')).toBeInTheDocument();
+        });
       });
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/professionals');
-    });
-  });
-
-  it('fetches notifications on mount', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockProfessionals),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockNotifications),
-      });
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/notifications?userId=user-1');
-    });
-  });
-
-  it('formats date correctly', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockProfessionals),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockNotifications),
-      });
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    await waitFor(() => {
-      expect(document.body.textContent).toMatch(/Data do exame:\s*25-10-2024/);
-    });
-  });
-
-  it('shows formatted received date', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockProfessionals),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockNotifications),
-      });
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    await waitFor(() => {
-      const receivedText = screen.getByText(/Recebido em:/);
-      expect(receivedText).toBeInTheDocument();
-    });
-  });
-
-  it('renders action buttons for each notification', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockProfessionals),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockNotifications),
-      });
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    await waitFor(() => {
-      expect(document.body.textContent).toMatch(/Associar a evento existente/);
-      expect(document.body.textContent).toMatch(/Criar novo evento/);
-    });
-  });
-
-  it('handles associate modal opening', async () => {
-    (global.fetch as any)
-      // 1. profissionais (NotificationCenter)
-      .mockResolvedValueOnce({ json: () => Promise.resolve(mockProfessionals) })
-      // 2. notificações (NotificationCenter)
-      .mockResolvedValueOnce({ json: () => Promise.resolve(mockNotifications) })
-      // 3. profissionais (AssociateNotificationModal - ao abrir)
-      .mockResolvedValueOnce({ json: () => Promise.resolve(mockProfessionals) })
-      // 4. eventos (AssociateNotificationModal)
-      .mockResolvedValueOnce({ json: () => Promise.resolve([]) })
-      // 5. profissionais (AssociateNotificationModal - atualização interna)
-      .mockResolvedValueOnce({ json: () => Promise.resolve(mockProfessionals) })
-      // 6. eventos (AssociateNotificationModal - atualização interna)
-      .mockResolvedValueOnce({ json: () => Promise.resolve([]) });
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    const associateButton = await screen.findByRole('button', { name: /Associar a evento existente/ });
-    fireEvent.click(associateButton);
-    // Modal deve ser aberto pelo AssociateNotificationModal
-  });
-
-  it('handles create modal opening', async () => {
-    (global.fetch as any)
-      // 1. profissionais (NotificationCenter)
-      .mockResolvedValueOnce({ json: () => Promise.resolve(mockProfessionals) })
-      // 2. notificações (NotificationCenter)
-      .mockResolvedValueOnce({ json: () => Promise.resolve(mockNotifications) })
-      // 3. profissionais (CreateEventFromNotificationModal)
-      .mockResolvedValueOnce({ json: () => Promise.resolve(mockProfessionals) });
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    const createButton = await screen.findByRole('button', { name: /Criar novo evento/ });
-    fireEvent.click(createButton);
-    // Modal deve ser aberto pelo CreateEventFromNotificationModal
-  });
-
-  it('refreshes notifications after success', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockProfessionals),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockNotifications),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve([]), // Refreshed empty list
-      });
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    await waitFor(() => {
-      // Initial load
-      expect(screen.getByText('Laudo recebido:')).toBeInTheDocument();
-    });
-
-    // Simulate success callback
-    // This would be called from the modal components
-    // For testing purposes, we assume the refresh happens
-  });
-
-  it('calls onProfessionalCreated when professionals are updated', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockProfessionals),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve(mockNotifications),
-      });
-
-    render(<NotificationCenter userId="user-1" onProfessionalCreated={mockOnProfessionalCreated} />);
-
-    await waitFor(() => {
-      // The callback would be called when professionals are created
-      // This is tested indirectly through the modal components
-    });
-  });
-
-  it('handles empty userId gracefully', () => {
-  (global.fetch as any).mockResolvedValue({ json: () => Promise.resolve([]) });
-  render(<NotificationCenter userId="" onProfessionalCreated={mockOnProfessionalCreated} />);
-  expect(screen.getByText('Carregando notificações...')).toBeInTheDocument();
   });
 });

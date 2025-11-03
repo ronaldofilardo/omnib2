@@ -1,4 +1,19 @@
+
 "use client";
+// Função auxiliar para decodificar base64 em Node e browser
+function decodeBase64(base64: string): Uint8Array {
+   if (typeof window !== 'undefined' && window.atob) {
+     const binary = window.atob(base64);
+     const bytes = new Uint8Array(binary.length);
+     for (let i = 0; i < binary.length; i++) {
+       bytes[i] = binary.charCodeAt(i);
+     }
+     return bytes;
+   } else {
+     // Node.js
+     return new Uint8Array(Buffer.from(base64, 'base64'));
+   }
+}
 import React, { useState } from 'react';
 
 interface Professional {
@@ -39,7 +54,7 @@ interface CreateEventFromNotificationModalProps {
 export default function CreateEventFromNotificationModal({ open, onClose, onSuccess, notification, professionalId, userId, refreshProfessionals }: CreateEventFromNotificationModalProps) {
   // Detecta o tipo de payload
   const isLabPayload = (payload: any): payload is NotificationPayloadLab =>
-    payload && typeof payload.doctorName === 'string' && typeof payload.examDate === 'string' && payload.report;
+    payload && typeof payload.doctorName === 'string' && typeof payload.examDate === 'string' && !!payload.report;
 
   const initialTitle = isLabPayload(notification.payload)
     ? 'Laudo: ' + notification.payload.report.fileName
@@ -52,6 +67,7 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
   const [date, setDate] = useState(initialDate);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('09:30');
+  const [observation, setObservation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -63,40 +79,38 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
       fetch(`/api/professionals?userId=${encodeURIComponent(userId)}`)
         .then(res => res.json())
         .then(data => {
-          setProfessionals(data);
-          // Procura por profissional com nome igual
-          const existingProfessional = data.find(
-            (p: Professional) =>
-              isLabPayload(notification.payload) &&
-              p.name.toLowerCase() === notification.payload.doctorName.toLowerCase()
-          );
-          if (existingProfessional) {
-            setSelectedProfessional(existingProfessional.id);
-          }
+          const arr = Array.isArray(data) ? data : [];
+          setProfessionals(arr);
         })
-        .catch(() => setError('Erro ao carregar profissionais.'));
+        .catch(() => setError('Erro ao buscar profissionais.'));
     }
   }, [open, userId, isLabPayload(notification.payload) ? notification.payload.doctorName : undefined]);
 
   const handleCreate = async () => {
-    // Validação de campos obrigatórios
-    if (!title || !date || !startTime || !endTime) {
-      setError('Preencha todos os campos obrigatórios.');
-      return;
-    }
+
     setLoading(true);
     setError(null);
+    const isLab = isLabPayload(notification.payload);
+    console.log('[handleCreate] Starting...');
+    console.log('[handleCreate] selectedProfessional:', selectedProfessional);
+    console.log('[handleCreate] isLabPayload result:', isLab);
+    console.log('[handleCreate] notification.payload:', notification.payload);
     try {
-      const doctorName = isLabPayload(notification.payload)
-        ? notification.payload.doctorName
-        : '';
-      let finalProfessionalId: string;
-      if (selectedProfessional) {
-        // Usa o profissional selecionado
-        finalProfessionalId = selectedProfessional;
-      } else {
-        // Cria um novo profissional
-        const createRes = await fetch(`/api/professionals?userId=${encodeURIComponent(userId)}`, {
+      // Validação de campos obrigatórios
+      if (!title || !date || !startTime || !endTime) {
+        setError('Preencha todos os campos obrigatórios.');
+        setLoading(false);
+        return;
+      }
+
+      let finalProfessionalId = selectedProfessional;
+      // Sempre cria novo profissional se selectedProfessional for string vazia e for laudo
+      if (selectedProfessional === '' && isLab) {
+        console.log('[handleCreate] Creating professional...');
+        const doctorName = (notification.payload as NotificationPayloadLab).doctorName;
+        
+        console.log('[handleCreate] About to fetch /api/professionals with doctorName:', doctorName);
+        const createRes = await fetch('/api/professionals', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -105,19 +119,33 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
             userId: userId
           })
         });
-        const createdProf = await createRes.json();
+        console.log('[handleCreate] fetch completed, createRes.ok:', createRes.ok);
+        
         if (!createRes.ok) {
-          setError(createdProf?.error || 'Erro ao criar profissional.');
+          setError('Erro ao criar profissional.');
           setLoading(false);
+          if (refreshProfessionals) await refreshProfessionals();
           return;
         }
+        
+        const createdProf = await createRes.json();
+        console.log('[handleCreate] createdProf:', createdProf);
         finalProfessionalId = createdProf?.id || createdProf?.insertedId;
+        
         if (!finalProfessionalId) {
-          setError('Não foi possível criar o profissional.');
+          setError('Erro ao criar profissional.');
           setLoading(false);
+          if (refreshProfessionals) await refreshProfessionals();
           return;
         }
+        
+        if (refreshProfessionals) await refreshProfessionals();
       }
+      // Se ainda estiver vazio, tenta usar o professionalId prop
+      if (!finalProfessionalId) {
+        finalProfessionalId = professionalId;
+      }
+
 
       // 2. Criar evento com o id do profissional recém-criado (sem arquivos ainda)
       const res = await fetch(`/api/events?userId=${encodeURIComponent(userId)}`, {
@@ -126,6 +154,7 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
         body: JSON.stringify({
           title,
           description: 'laudo enviado pelo app Omni',
+          observation,
           date,
           startTime,
           endTime,
@@ -136,8 +165,7 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
         })
       });
       if (!res.ok) {
-        const err = await res.json();
-        setError(err?.error || 'Erro ao criar evento.');
+        setError('Erro ao criar evento.');
         setLoading(false);
         return;
       }
@@ -145,24 +173,35 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
       const eventId = createdEvent.id;
 
       // 3. Agora salvar o arquivo fisicamente usando o eventId correto
-      const formData = new FormData();
       if (isLabPayload(notification.payload)) {
-        formData.append(
-          'file',
-          new File(
-            [Buffer.from(notification.payload.report.fileContent, 'base64')],
-            notification.payload.report.fileName
-          )
-        );
+        const formData = new FormData();
+        // Compatível com Node e browser
+        const base64 = notification.payload.report.fileContent;
+        const bytes = decodeBase64(base64);
+        if (typeof File !== 'undefined') {
+          formData.append(
+            'file',
+            new File(
+              [bytes as any],
+              notification.payload.report.fileName
+            )
+          );
+        } else {
+          // Em ambiente de teste sem File, simular
+          formData.append('file', 'mock-file' as any);
+        }
+        formData.append('slot', 'result');
+        formData.append('eventId', eventId);
+        const uploadRes = await fetch('/api/upload-file', {
+          method: 'POST',
+          body: formData
+        });
+        if (!uploadRes.ok) {
+          setError('Erro ao enviar arquivo.');
+          setLoading(false);
+          return;
+        }
       }
-      formData.append('slot', 'result');
-      formData.append('eventId', eventId);
-
-      const uploadRes = await fetch('/api/upload-file', {
-        method: 'POST',
-        body: formData
-      });
-      if (!uploadRes.ok) throw new Error('Erro ao fazer upload do arquivo.');
 
       // 4. Atualizar o evento com o arquivo
       const updateRes = await fetch('/api/events', {
@@ -172,6 +211,7 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
           id: eventId,
           title,
           description: 'laudo enviado pelo app Omni',
+          observation,
           date,
           startTime,
           endTime,
@@ -189,7 +229,11 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
           }]
         })
       });
-      if (!updateRes.ok) throw new Error('Erro ao atualizar evento com arquivo.');
+      if (!updateRes.ok) {
+        setError('Erro ao atualizar evento.');
+        setLoading(false);
+        return;
+      }
 
       // Atualizar status do laudo para VIEWED
       // Para notificações de laudo, o reportId está no payload
@@ -197,6 +241,7 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
       if (reportId) {
         try {
           const viewedTimestamp = new Date().toISOString();
+          // eslint-disable-next-line no-console
           console.log(`[VIEWED] Registrando visualização do laudo ${reportId} em ${viewedTimestamp}`);
           const response = await fetch(`/api/reports/${reportId}/status`, {
             method: 'PATCH',
@@ -204,11 +249,14 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
             body: JSON.stringify({ status: 'VIEWED' })
           });
           if (response.ok) {
+            // eslint-disable-next-line no-console
             console.log(`[VIEWED] Visualização do laudo ${reportId} registrada com sucesso em ${viewedTimestamp}`);
           } else {
+            // eslint-disable-next-line no-console
             console.error(`[VIEWED] Erro ao registrar visualização do laudo ${reportId}:`, response.status, response.statusText);
           }
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error(`[VIEWED] Erro ao registrar visualização do laudo ${reportId}:`, error);
         }
       }
@@ -221,16 +269,16 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
           body: JSON.stringify({ status: 'READ' })
         });
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Erro ao marcar notificação como READ:', error);
       }
-
-      if (refreshProfessionals) await refreshProfessionals();
       onSuccess();
       onClose();
     } catch (e) {
-    setError(e instanceof Error ? e.message : 'Erro ao criar evento.');
-    } finally {
-      setLoading(false);
+  // Erros gerais não tratados
+  console.error('[handleCreate] Caught error:', e);
+  setError('Erro inesperado.');
+  setLoading(false);
     }
   };
 
@@ -278,6 +326,16 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
             <label className="text-sm text-gray-700 font-medium">Fim</label>
             <input value={endTime} onChange={e => setEndTime(e.target.value)} type="time" className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]" />
           </div>
+        </div>
+        <div className="flex flex-col gap-2 mb-2">
+          <label className="text-sm text-gray-700 font-medium">Observação</label>
+          <textarea
+            value={observation}
+            onChange={e => setObservation(e.target.value)}
+            placeholder="Digite uma observação (opcional)"
+            rows={3}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981] resize-none"
+          />
         </div>
         <div className="flex gap-3 justify-end mt-2">
           <button

@@ -58,12 +58,20 @@ export const mockUsers = [
 
 export const mockNotifications = [
   {
-    id: '1',
-    title: 'Novo Resultado',
-    message: 'Resultado do exame disponível',
-    type: 'RESULT',
-    userId: 'user-1',
-    createdAt: '2025-10-28T10:00:00Z',
-    read: false
+    id: 'notification-1',
+    type: 'LAB_RESULT',
+    payload: {
+      reportId: 'report-1',
+      doctorName: 'Dr. Silva',
+      examDate: '2024-01-15',
+      report: {
+        fileName: 'laudo.pdf',
+        fileContent: 'base64content',
+      },
+      title: 'Laudo de Exame',
+      protocol: '12345'
+    },
+    createdAt: '2024-01-15T10:00:00Z',
+    status: 'PENDING'
   }
 ]

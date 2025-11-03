@@ -13,7 +13,7 @@ export default defineConfig({
     setupFiles: [
       './tests/setupJestDom.ts', // Setup dedicado para jest-dom (matchers)
       './tests/setup.ts', // Setup global unificado para testes
-      './tests/utils/mocks/setupFetchMock.ts',
+      // './tests/utils/mocks/setupFetchMock.ts', // Desabilitado - deve ser importado explicitamente nos testes que precisam
     ],
     include: [
       'tests/unit/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',

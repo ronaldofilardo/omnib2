@@ -19,7 +19,16 @@ const routeHandlers = new Map<string, Record<HttpMethod, (params?: any) => MockR
 // Configuração das rotas da API
 routeHandlers.set('/api/events', {
   GET: () => ({ status: 200, body: mockEvents }),
-  POST: (data) => ({ status: 201, body: { id: '3', ...data, message: 'Evento criado' } }),
+  POST: (data) => {
+    // Validação básica de data
+    if (data && data.date) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$/
+      if (!dateRegex.test(data.date)) {
+        return { status: 400, body: { message: 'Formato de data inválido. Use dd/mm/yyyy ou yyyy-MM-dd.' } }
+      }
+    }
+    return { status: 201, body: { id: '3', ...data, message: 'Evento criado' } }
+  },
   PUT: () => ({ status: 200, body: { message: 'Evento atualizado' } }),
   DELETE: () => ({ status: 200, body: { message: 'Evento deletado' } }),
   PATCH: () => ({ status: 200, body: { message: 'Evento atualizado parcialmente' } })
@@ -39,6 +48,15 @@ routeHandlers.set('/api/notifications', {
   PUT: () => ({ status: 200, body: { message: 'Notificação atualizada' } }),
   DELETE: () => ({ status: 200, body: { message: 'Notificação deletada' } }),
   PATCH: () => ({ status: 200, body: { message: 'Notificação atualizada parcialmente' } })
+})
+
+// Handler específico para /api/reports/:id/access
+routeHandlers.set('/api/reports/report-1/access', {
+  POST: (data) => ({ status: 200, body: { message: 'Acesso registrado' } }),
+  GET: () => ({ status: 405, body: { message: 'Método não permitido' } }),
+  PUT: () => ({ status: 405, body: { message: 'Método não permitido' } }),
+  DELETE: () => ({ status: 405, body: { message: 'Método não permitido' } }),
+  PATCH: () => ({ status: 405, body: { message: 'Método não permitido' } })
 })
 
 // Função auxiliar para encontrar handlers dinâmicos (com parâmetros na URL)
@@ -80,7 +98,10 @@ const findDynamicHandler = (url: string): [string, Record<HttpMethod, (params?: 
 // Setup do mock global de fetch
 beforeAll(() => {
   vi.stubGlobal('fetch', async (input: string | Request, init?: RequestInit) => {
-    const url = typeof input === 'string' ? input : input.url
+    const rawUrl = typeof input === 'string' ? input : input.url
+    // Cria uma URL completa para poder extrair o pathname corretamente
+    const parsedUrl = new URL(rawUrl, 'http://localhost')
+    const pathname = parsedUrl.pathname
     const method = (init?.method || 'GET') as HttpMethod
     
     // Parse body - handle FormData separately
@@ -100,11 +121,11 @@ beforeAll(() => {
     }
 
     // Procura handler estático
-    let handler = routeHandlers.get(url)?.[method]
+    let handler = routeHandlers.get(pathname)?.[method]
 
     // Se não encontrar handler estático, procura dinâmico
     if (!handler) {
-      const dynamicRoute = findDynamicHandler(url)
+      const dynamicRoute = findDynamicHandler(pathname)
       if (dynamicRoute) {
         handler = dynamicRoute[1][method]
       }

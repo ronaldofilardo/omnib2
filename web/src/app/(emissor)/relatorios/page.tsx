@@ -11,7 +11,7 @@ export default async function RelatoriosPage() {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Dashboard de Laudos</h1>
+      <h1 className="text-2xl font-bold mb-6">Relatórios</h1>
       <ReportsDashboard />
     </div>
   );

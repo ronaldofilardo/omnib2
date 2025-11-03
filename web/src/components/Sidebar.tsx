@@ -27,8 +27,8 @@ export default function Sidebar({ userRole = '', activeMenu = '', onMenuClick, u
   let menuItems: MenuItem[] = [];
   if (userRole === 'EMISSOR') {
     menuItems = [
-      { label: 'Portal de envio', id: 'laudos', icon: FileText, href: '/laudos' },
-      { label: 'Relatório', id: 'relatorios', icon: BarChart2, href: '/relatorios' },
+      { label: 'Portal de Envio', id: 'laudos', icon: FileText, href: '/laudos' },
+      { label: 'Relatórios', id: 'relatorios', icon: BarChart2, href: '/relatorios' },
     ];
   } else {
     // RECEPTOR ou qualquer valor vazio/inválido
@@ -45,6 +45,8 @@ export default function Sidebar({ userRole = '', activeMenu = '', onMenuClick, u
   function handleLogoutClick() {
     if (onMenuClick) {
       onMenuClick('logout');
+      // Garante que sempre redireciona para login após fechar menu
+      setTimeout(() => router.push('/login'), 100);
     } else {
       router.push('/login');
     }
@@ -72,7 +74,11 @@ export default function Sidebar({ userRole = '', activeMenu = '', onMenuClick, u
                 key={item.id}
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${isActive ? 'bg-[#10B981] text-white' : 'text-[#374151] hover:bg-gray-50'}`}
-                onClick={onMenuClick ? (e) => { e.preventDefault(); onMenuClick(item.id); } : undefined}
+                onClick={onMenuClick ? (e) => {
+                  e.preventDefault();
+                  onMenuClick(item.id);
+                  router.push(item.href!);
+                } : undefined}
               >
                 <span className="relative">
                   <Icon className="w-5 h-5" strokeWidth={2} />
@@ -85,7 +91,9 @@ export default function Sidebar({ userRole = '', activeMenu = '', onMenuClick, u
             ) : (
               <button
                 key={item.id}
-                onClick={() => onMenuClick && onMenuClick(item.id)}
+                onClick={() => {
+                  if (onMenuClick) onMenuClick(item.id);
+                }}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${isActive ? 'bg-[#10B981] text-white' : 'text-[#374151] hover:bg-gray-50'}`}
               >
                 <span className="relative">

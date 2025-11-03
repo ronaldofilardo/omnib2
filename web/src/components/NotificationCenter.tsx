@@ -4,18 +4,22 @@ import AssociateNotificationModal from './AssociateNotificationModal';
 import CreateEventFromNotificationModal from './CreateEventFromNotificationModal';
 import { Bell } from 'lucide-react';
 
+export interface NotificationPayload {
+  doctorName: string;
+  examDate: string;
+  report: {
+    fileName: string;
+    fileContent: string;
+  };
+  reportId?: string;
+}
+
 export interface Notification {
   id: string;
   type: string;
-  payload: {
-    doctorName: string;
-    examDate: string;
-    report: {
-      fileName: string;
-      fileContent: string;
-    };
-  };
+  payload: NotificationPayload;
   createdAt: string;
+  status: string;
 }
 
 interface Professional {
@@ -29,71 +33,103 @@ interface NotificationCenterProps {
 }
 
 export default function NotificationCenter({ userId, onProfessionalCreated }: NotificationCenterProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [associateModal, setAssociateModal] = useState<{ open: boolean; notification: Notification | null }>({ open: false, notification: null });
-  const [createModal, setCreateModal] = useState<{ open: boolean; notification: Notification | null }>({ open: false, notification: null });
-  const [professionalId, setProfessionalId] = useState<string>('');
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
+   const [notifications, setNotifications] = useState<Notification[]>([]);
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState<string | null>(null);
+   const [associateModal, setAssociateModal] = useState<{ open: boolean; notification: Notification | null }>({ open: false, notification: null });
+   const [createModal, setCreateModal] = useState<{ open: boolean; notification: Notification | null }>({ open: false, notification: null });
+   const [professionalId, setProfessionalId] = useState<string>('');
+   const [professionals, setProfessionals] = useState<Professional[]>([]);
+   const [mounted, setMounted] = useState(false);
 
   // Buscar profissionais (salva todos)
   useEffect(() => {
-    fetch('/api/professionals')
+    setMounted(true);
+    // Compatível com testes unitários e integração
+    const url = userId ? `/api/professionals?userId=${encodeURIComponent(userId)}` : '/api/professionals';
+    fetch(url)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setProfessionals(data);
       });
-  }, []);
+  }, [userId]);
 
-  const fetchNotifications = async () => {
-    setLoading(true);
-    if (!userId) return;
+  const registerAccess = async (notifications: Notification[]) => {
+    const accessTimestamp = new Date().toISOString();
+    console.log(`[NotificationCenter] ${notifications.length} notificações carregadas em ${accessTimestamp}`);
 
-    try {
-      // Buscar notificações
-      const res = await fetch(`/api/notifications?userId=${encodeURIComponent(userId)}`);
-      const data = await res.json();
-      const notificationsData = Array.isArray(data) ? data : data.notifications || [];
-
-      // Quando as notificações são carregadas, significa que o usuário acessou a Central
-      // Registrar timestamp de acesso para cada laudo
-      const accessTimestamp = new Date().toISOString();
-      console.log(`[NotificationCenter] ${notificationsData.length} notificações carregadas em ${accessTimestamp}`);
-
-      for (const notification of notificationsData) {
-        if (notification.payload?.reportId) {
-          try {
-            console.log(`[RECEIVED] Registrando acesso ao laudo ${notification.payload.reportId} em ${accessTimestamp}`);
-            const response = await fetch(`/api/reports/${notification.payload.reportId}/access`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ accessTimestamp })
-            });
-            if (response.ok) {
-              console.log(`[RECEIVED] Acesso ao laudo ${notification.payload.reportId} registrado com sucesso em ${accessTimestamp}`);
-            } else {
-              console.error(`[RECEIVED] Erro ao registrar acesso ao laudo ${notification.payload.reportId}:`, response.status, response.statusText);
-            }
-          } catch (error) {
-            console.error(`[RECEIVED] Erro ao registrar acesso ao laudo ${notification.payload.reportId}:`, error);
+    for (const notification of notifications) {
+      const reportId = (notification.payload as any).reportId;
+      if (reportId) {
+        try {
+          console.log(`[RECEIVED] Registrando acesso ao laudo ${reportId} em ${accessTimestamp}`);
+          const response = await fetch(`/api/reports/${reportId}/access`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accessTimestamp })
+          });
+          if (response.ok) {
+            console.log(`[RECEIVED] Acesso ao laudo ${reportId} registrado com sucesso em ${accessTimestamp}`);
+          } else {
+            console.error(`[RECEIVED] Erro ao registrar acesso ao laudo ${reportId}:`, response.status, response.statusText);
           }
+        } catch (error) {
+          console.error(`[RECEIVED] Erro ao registrar acesso ao laudo ${reportId}:`, error);
         }
       }
+    }
+  };
+
+  const fetchNotifications = async () => {
+    console.log('[NotificationCenter] Starting fetchNotifications');
+    setLoading(true);
+    if (!userId) {
+      console.log('[NotificationCenter] No userId, returning early');
+      return;
+    }
+
+    try {
+      console.log('[NotificationCenter] Fetching notifications for userId:', userId);
+      // Buscar notificações
+      const res = await fetch(`/api/notifications?userId=${encodeURIComponent(userId)}`);
+      console.log('[NotificationCenter] Fetch response status:', res.status);
+      if (!res.ok) {
+        throw new Error('Erro ao carregar notificações.');
+      }
+      const data = await res.json();
+      console.log('[NotificationCenter] Raw data received:', data);
+      const notificationsData = Array.isArray(data) ? data : data.notifications || [];
+      console.log('[NotificationCenter] Processed notificationsData:', notificationsData);
 
       setNotifications(notificationsData);
       setLoading(false);
+      console.log('[NotificationCenter] Loading set to false, notifications set');
+
+      // Registrar acesso aos laudos após carregar com sucesso
+      if (notificationsData.length > 0) {
+        console.log('[NotificationCenter] Registering access for notifications');
+        await registerAccess(notificationsData);
+      } else {
+        console.log('[NotificationCenter] No notifications to register access for');
+      }
     } catch (error) {
-      setError('Erro ao carregar notificações');
+      console.log('[NotificationCenter] Error in fetchNotifications:', error);
+  setError('Erro ao carregar notificações.');
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
-  }, [userId]);
+    console.log('[NotificationCenter] useEffect triggered, mounted:', mounted, 'userId:', userId);
+    if (mounted) {
+      console.log('[NotificationCenter] Calling fetchNotifications');
+      fetchNotifications();
+    } else {
+      console.log('[NotificationCenter] Not mounted yet, skipping fetchNotifications');
+    }
+  }, [userId, mounted]);
 
-  if (loading) return (
+  if (!mounted || loading) return (
     <div className="flex-1 w-full md:w-[1160px] relative ml-0 md:ml-0 h-screen overflow-y-auto">
       <div className="flex items-center justify-center h-full text-gray-400 text-lg">Carregando notificações...</div>
     </div>
@@ -121,7 +157,8 @@ export default function NotificationCenter({ userId, onProfessionalCreated }: No
   const handleSuccess = () => {
     fetchNotifications();
     // Atualiza profissionais localmente também
-    fetch('/api/professionals')
+    const url = userId ? `/api/professionals?userId=${encodeURIComponent(userId)}` : '/api/professionals';
+    fetch(url)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setProfessionals(data);

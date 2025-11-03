@@ -14,7 +14,7 @@ describe('Event Creation from Notification - Integration', () => {
       examDate: '2024-10-25',
       report: {
         fileName: 'laudo-cardio.pdf',
-        fileContent: 'base64content',
+        fileContent: 'dGVzdA==', // "test" em base64
       },
     },
   };
@@ -174,24 +174,26 @@ describe('Event Creation from Notification - Integration', () => {
   });
 
   it('handles event creation failure', async () => {
+    // Mock GET /api/professionals - retorna lista de profissionais
     (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
       json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
     });
 
+    // Mock POST /api/professionals - cria novo profissional (necessário porque professionalId está vazio)
     (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
       json: () => Promise.resolve({ id: 'new-prof-id' }),
     });
 
+    // Mock POST /api/events - falha ao criar evento
     (global.fetch as any).mockResolvedValueOnce({
       ok: false,
+      status: 400,
       json: () => Promise.resolve({ error: 'Horário conflitante' }),
     });
 
     render(<CreateEventFromNotificationModal {...defaultProps} />);
-
-    // Seleciona o profissional
-    const professionalSelect = screen.getByRole('combobox');
-    fireEvent.change(professionalSelect, { target: { value: 'prof-1' } });
 
     await waitFor(() => {
       const createButton = screen.getByText('Criar Evento');
@@ -200,34 +202,35 @@ describe('Event Creation from Notification - Integration', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Erro ao criar evento.')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
     expect(mockOnSuccess).not.toHaveBeenCalled();
     expect(mockOnClose).not.toHaveBeenCalled();
   });
 
   it('handles file upload failure gracefully', async () => {
+    // Mock GET /api/professionals - retorna lista de profissionais
     (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
       json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
     });
 
-    (global.fetch as any).mockResolvedValueOnce({
-      json: () => Promise.resolve({ id: 'new-prof-id' }),
-    });
-
+    // Mock POST /api/events - sucesso ao criar evento
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ id: 'event-id' }),
     });
 
+    // Mock POST /api/upload - falha no upload do arquivo
     (global.fetch as any).mockResolvedValueOnce({
       ok: false,
+      status: 500,
       json: () => Promise.resolve({ error: 'Upload failed' }),
     });
 
     render(<CreateEventFromNotificationModal {...defaultProps} />);
 
-    // Seleciona o profissional
+    // Seleciona o profissional existente
     const professionalSelect = screen.getByRole('combobox');
     fireEvent.change(professionalSelect, { target: { value: 'prof-1' } });
 

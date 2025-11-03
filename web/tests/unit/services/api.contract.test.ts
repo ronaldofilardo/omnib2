@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { addMockRoute, removeMockRoute } from '../../utils/mocks/setupFetchMock'
 
+// Import setupFetchMock para garantir que o mock global esteja ativo
+import '../../utils/mocks/setupFetchMock'
+
 describe('API Contract Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -190,12 +193,10 @@ describe('API Contract Tests', () => {
       if (data.length > 0) {
         const notification = data[0]
         expect(notification).toHaveProperty('id')
-        expect(notification).toHaveProperty('title')
-        expect(notification).toHaveProperty('message')
         expect(notification).toHaveProperty('type')
-        expect(notification).toHaveProperty('userId')
+        expect(notification).toHaveProperty('payload')
         expect(notification).toHaveProperty('createdAt')
-        expect(notification).toHaveProperty('read')
+        expect(notification).toHaveProperty('status')
       }
     })
 

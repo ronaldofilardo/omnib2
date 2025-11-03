@@ -1,11 +1,13 @@
+
+import type { ReactNode } from 'react';
 import { auth } from '@/lib/auth';
-import Sidebar from '@/components/Sidebar';
 import { redirect } from 'next/navigation';
+import ResponsiveSidebarLayout from '@/components/ResponsiveSidebarLayout';
 
 export default async function EmissorLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const user = await auth();
 
@@ -17,12 +19,11 @@ export default async function EmissorLayout({
     redirect('/login');
   }
 
+  // Renderiza o layout client-side para responsividade
   return (
-    <div className="flex h-screen">
-      <Sidebar userRole="EMISSOR" user={user} />
-      <main className="flex-1 overflow-y-auto bg-gray-50">
-        {children}
-      </main>
-    </div>
+    <ResponsiveSidebarLayout user={user}>
+      {children}
+    </ResponsiveSidebarLayout>
   );
 }
+

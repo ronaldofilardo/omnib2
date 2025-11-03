@@ -169,8 +169,8 @@ describe('Sidebar', () => {
     it('renders EMISSOR menu items when userRole is EMISSOR', () => {
       renderComponent('laudos', 'user-1', 'EMISSOR')
 
-      expect(screen.getByText('Portal de envio')).toBeInTheDocument()
-      expect(screen.getByText('Relatório')).toBeInTheDocument()
+      expect(screen.getByText('Portal de Envio')).toBeInTheDocument()
+      expect(screen.getByText('Relatórios')).toBeInTheDocument()
       expect(screen.getByText('Sair')).toBeInTheDocument()
 
       // Should not render RECEPTOR menu items
@@ -194,8 +194,8 @@ describe('Sidebar', () => {
       expect(screen.getByText('Sair')).toBeInTheDocument()
 
       // Should not render EMISSOR menu items
-      expect(screen.queryByText('Portal de envio')).not.toBeInTheDocument()
-      expect(screen.queryByText('Relatório')).not.toBeInTheDocument()
+      expect(screen.queryByText('Portal de Envio')).not.toBeInTheDocument()
+      expect(screen.queryByText('Relatórios')).not.toBeInTheDocument()
     })
 
     it('renders RECEPTOR menu items by default when userRole is empty', () => {
@@ -210,8 +210,8 @@ describe('Sidebar', () => {
       expect(screen.getByText('Sair')).toBeInTheDocument()
 
       // Should not render EMISSOR menu items
-      expect(screen.queryByText('Portal de envio')).not.toBeInTheDocument()
-      expect(screen.queryByText('Relatório')).not.toBeInTheDocument()
+      expect(screen.queryByText('Portal de Envio')).not.toBeInTheDocument()
+      expect(screen.queryByText('Relatórios')).not.toBeInTheDocument()
     })
 
     it('renders RECEPTOR menu items when userRole is invalid', () => {
@@ -234,11 +234,11 @@ describe('Sidebar', () => {
     it('calls onMenuClick com id correto para itens EMISSOR', () => {
       renderComponent('laudos', 'user-1', 'EMISSOR')
 
-      const portalEnvioLink = screen.getByRole('link', { name: 'Portal de envio' })
+      const portalEnvioLink = screen.getByRole('link', { name: 'Portal de Envio' })
       fireEvent.click(portalEnvioLink)
       expect(mockOnMenuClick).toHaveBeenCalledWith('laudos')
 
-      const relatorioLink = screen.getByRole('link', { name: 'Relatório' })
+      const relatorioLink = screen.getByRole('link', { name: 'Relatórios' })
       fireEvent.click(relatorioLink)
       expect(mockOnMenuClick).toHaveBeenCalledWith('relatorios')
     })
@@ -246,7 +246,7 @@ describe('Sidebar', () => {
     it('destaca item ativo para EMISSOR', () => {
       renderComponent('relatorios', 'user-1', 'EMISSOR')
 
-      const relatorioLink = screen.getByRole('link', { name: 'Relatório' })
+      const relatorioLink = screen.getByRole('link', { name: 'Relatórios' })
       expect(relatorioLink).toHaveClass('bg-[#10B981]', 'text-white')
     })
 
@@ -265,6 +265,40 @@ describe('Sidebar', () => {
 
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(7) // 6 menu items + 1 logout
+    })
+
+    it('navega corretamente para rotas EMISSOR em mobile', () => {
+      // Mock window.innerWidth para simular mobile
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 768,
+      })
+
+      renderComponent('laudos', 'user-1', 'EMISSOR')
+
+      const portalEnvioLink = screen.getByRole('link', { name: 'Portal de Envio' })
+      fireEvent.click(portalEnvioLink)
+
+      expect(mockOnMenuClick).toHaveBeenCalledWith('laudos')
+      // Verificar se o href está correto
+      expect(portalEnvioLink).toHaveAttribute('href', '/laudos')
+    })
+
+    it('navega corretamente para rotas RECEPTOR em mobile', () => {
+      // Mock window.innerWidth para simular mobile
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 768,
+      })
+
+      renderComponent('timeline', 'user-1', 'RECEPTOR')
+
+      const timelineButton = screen.getByText('Timeline')
+      fireEvent.click(timelineButton)
+
+      expect(mockOnMenuClick).toHaveBeenCalledWith('timeline')
     })
   })
 })
