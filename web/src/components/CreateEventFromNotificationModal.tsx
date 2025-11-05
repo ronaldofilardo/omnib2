@@ -1,19 +1,6 @@
 
 "use client";
-// Função auxiliar para decodificar base64 em Node e browser
-function decodeBase64(base64: string): Uint8Array {
-   if (typeof window !== 'undefined' && window.atob) {
-     const binary = window.atob(base64);
-     const bytes = new Uint8Array(binary.length);
-     for (let i = 0; i < binary.length; i++) {
-       bytes[i] = binary.charCodeAt(i);
-     }
-     return bytes;
-   } else {
-     // Node.js
-     return new Uint8Array(Buffer.from(base64, 'base64'));
-   }
-}
+// Função auxiliar para decodificar base64 em Node e browser (removida, não necessária)
 import React, { useState } from 'react';
 
 interface Professional {
@@ -147,7 +134,17 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
       }
 
 
-      // 2. Criar evento com o id do profissional recém-criado (sem arquivos ainda)
+      // 2. Criar evento com o arquivo base64 diretamente
+      const files = [];
+      if (isLabPayload(notification.payload)) {
+        files.push({
+          slot: 'result',
+          name: notification.payload.report.fileName,
+          url: `data:application/pdf;base64,${notification.payload.report.fileContent}`,
+          uploadDate: new Date().toISOString().split('T')[0]
+        });
+      }
+
       const res = await fetch(`/api/events?userId=${encodeURIComponent(userId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -160,7 +157,7 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
           endTime,
           type: 'EXAME',
           professionalId: finalProfessionalId,
-          files: [],
+          files,
           notificationId: notification.id
         })
       });
@@ -170,70 +167,6 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
         return;
       }
       const createdEvent = await res.json();
-      const eventId = createdEvent.id;
-
-      // 3. Agora salvar o arquivo fisicamente usando o eventId correto
-      if (isLabPayload(notification.payload)) {
-        const formData = new FormData();
-        // Compatível com Node e browser
-        const base64 = notification.payload.report.fileContent;
-        const bytes = decodeBase64(base64);
-        if (typeof File !== 'undefined') {
-          formData.append(
-            'file',
-            new File(
-              [bytes as any],
-              notification.payload.report.fileName
-            )
-          );
-        } else {
-          // Em ambiente de teste sem File, simular
-          formData.append('file', 'mock-file' as any);
-        }
-        formData.append('slot', 'result');
-        formData.append('eventId', eventId);
-        const uploadRes = await fetch('/api/upload-file', {
-          method: 'POST',
-          body: formData
-        });
-        if (!uploadRes.ok) {
-          setError('Erro ao enviar arquivo.');
-          setLoading(false);
-          return;
-        }
-      }
-
-      // 4. Atualizar o evento com o arquivo
-      const updateRes = await fetch('/api/events', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: eventId,
-          title,
-          description: 'laudo enviado pelo app Omni',
-          observation,
-          date,
-          startTime,
-          endTime,
-          type: 'EXAME',
-          professionalId: finalProfessionalId,
-          files: [{
-            slot: 'result',
-            name: isLabPayload(notification.payload)
-              ? notification.payload.report.fileName
-              : '',
-            url: isLabPayload(notification.payload)
-              ? `/uploads/${eventId}/result-${notification.payload.report.fileName}`
-              : '',
-            uploadDate: new Date().toISOString().split('T')[0]
-          }]
-        })
-      });
-      if (!updateRes.ok) {
-        setError('Erro ao atualizar evento.');
-        setLoading(false);
-        return;
-      }
 
       // Atualizar status do laudo para VIEWED
       // Para notificações de laudo, o reportId está no payload
