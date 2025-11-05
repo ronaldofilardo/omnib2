@@ -3,7 +3,7 @@ import { PrismaClient, NotificationType, NotificationStatus } from '@prisma/clie
 
 const prisma = new PrismaClient();
 
-// Simples rate limit in-memory (MVP, troque por Redis/Edge em produção)
+// Simples rate limit in-memory (MVP, troque por Redis/Edge em produção - teste)
 export const rateLimitMap = new Map<string, { count: number; last: number }>();
 const RATE_LIMIT = 10; // máx. 10 requisições por IP por hora
 const PAYLOAD_SIZE_LIMIT = 2 * 1024; // 2KB
