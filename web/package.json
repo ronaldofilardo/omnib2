@@ -81,6 +81,7 @@
     "@vitejs/plugin-react": "^5.1.0",
     "@vitest/coverage-c8": "^0.33.0",
     "@vitest/coverage-v8": "4.0.3",
+    "baseline-browser-mapping": "^2.9.0",
     "cross-env": "^10.1.0",
     "dotenv-cli": "^10.0.0",
     "eslint": "^9",

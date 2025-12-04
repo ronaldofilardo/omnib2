@@ -1,11 +1,22 @@
 import { Resend } from 'resend';
 
-export const resend = new Resend(process.env.RESEND_API_KEY);
+let resendInstance: Resend | null = null;
+
+export const getResend = () => {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY is required');
+    }
+    resendInstance = new Resend(apiKey);
+  }
+  return resendInstance;
+};
 
 export async function sendVerificationEmail(email: string, token: string) {
   const confirmLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email?token=${token}`;
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'Omni Saúde <no-reply@omniapp.online>',
     to: email,
     subject: 'Confirme seu e-mail - Omni Saúde',
