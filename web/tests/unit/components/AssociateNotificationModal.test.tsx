@@ -47,6 +47,16 @@ describe('AssociateNotificationModal', () => {
           url: 'http://example.com/existing-laudo.pdf'
         }
       ]
+    },
+    {
+      id: 'event-3',
+      title: 'Consulta Oftalmologia',
+      date: '2025-12-05',
+      startTime: '09:00',
+      endTime: '09:30',
+      type: 'CONSULTATION',
+      professionalId: 'prof-1',
+      files: []
     }
   ]
 
@@ -133,10 +143,13 @@ describe('AssociateNotificationModal', () => {
       const options = screen.getAllByRole('option');
       const optionConsulta = options.find(opt => opt.getAttribute('value') === 'event-1');
       const optionExame = options.find(opt => opt.getAttribute('value') === 'event-2');
+      const optionConsulta2 = options.find(opt => opt.getAttribute('value') === 'event-3');
       expect(optionConsulta).toBeDefined();
       expect(optionExame).toBeDefined();
-      expect(optionConsulta?.textContent).toMatch(/CONSULTA.*Dr\. Silva.*25\/10\/2024.*10:00-11:00/);
-      expect(optionExame?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00-15:00/);
+      expect(optionConsulta2).toBeDefined();
+      expect(optionConsulta?.textContent).toMatch(/CONSULTA.*Dr\. Silva.*25\/10\/2024.*10:00 - 11:00/);
+      expect(optionExame?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00 - 15:00/);
+      expect(optionConsulta2?.textContent).toMatch(/CONSULTA.*Dr\. Silva.*05\/12\/2025.*9:00 - 9:30/);
     });
   })
 
@@ -157,7 +170,7 @@ describe('AssociateNotificationModal', () => {
       const options = screen.getAllByRole('option');
       const option = options.find(opt => opt.getAttribute('value') === 'event-1');
       expect(option).toBeDefined();
-      expect(option?.textContent).toMatch(/CONSULTA.*Dr\. Silva.*25\/10\/2024.*10:00-11:00/);
+      expect(option?.textContent).toMatch(/CONSULTA.*Dr\. Silva.*25\/10\/2024.*10:00 - 11:00/);
     });
 
     const select = screen.getByRole('combobox')
@@ -196,7 +209,7 @@ describe('AssociateNotificationModal', () => {
       expect(options.length).toBeGreaterThan(0);
       const option = options.find(opt => opt.getAttribute('value') === 'event-2');
       expect(option).toBeDefined();
-      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00-15:00/);
+      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00 - 15:00/);
     });
 
     // Seleciona o evento
@@ -216,7 +229,7 @@ describe('AssociateNotificationModal', () => {
 
     // Verifica se a mensagem de confirmação aparece
     await waitFor(() => {
-      expect(screen.getByText(/Já existe um laudo para este evento/)).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('Já existe um laudo para este evento'))).toBeInTheDocument();
     });
   })
 
@@ -239,7 +252,7 @@ describe('AssociateNotificationModal', () => {
       expect(options.length).toBeGreaterThan(0);
       const option = options.find(opt => opt.getAttribute('value') === 'event-2');
       expect(option).toBeDefined();
-      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00-15:00/);
+      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00 - 15:00/);
     });
 
     // Seleciona o evento
@@ -289,7 +302,7 @@ describe('AssociateNotificationModal', () => {
       const options = screen.getAllByRole('option');
       const option = options.find(opt => opt.getAttribute('value') === 'event-2');
       expect(option).toBeDefined();
-      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00-15:00/);
+      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00 - 15:00/);
     });
 
     await waitFor(() => {
@@ -317,7 +330,7 @@ describe('AssociateNotificationModal', () => {
       expect(options.length).toBeGreaterThan(0);
       const option = options.find(opt => opt.getAttribute('value') === 'event-2');
       expect(option).toBeDefined();
-      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00-15:00/);
+      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00 - 15:00/);
     });
 
     // Seleciona o evento
@@ -370,7 +383,7 @@ describe('AssociateNotificationModal', () => {
       const options = screen.getAllByRole('option');
       const option = options.find(opt => opt.getAttribute('value') === 'event-2');
       expect(option).toBeDefined();
-      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00-15:00/);
+      expect(option?.textContent).toMatch(/EXAME.*Dra\. Santos.*26\/10\/2024.*14:00 - 15:00/);
     });
 
     expect(screen.queryByText('Já existe um laudo para este evento.')).not.toBeInTheDocument();
@@ -398,7 +411,7 @@ describe('AssociateNotificationModal', () => {
       expect(options.length).toBeGreaterThan(0);
       const option = options.find(opt => opt.getAttribute('value') === 'event-1');
       expect(option).toBeDefined();
-      expect(option?.textContent).toMatch(/CONSULTA.*Dr\. Silva.*25\/10\/2024.*10:00-11:00/);
+      expect(option?.textContent).toMatch(/CONSULTA.*Dr\. Silva.*25\/10\/2024.*10:00 - 11:00/);
     });
 
     const select = screen.getByRole('combobox')
@@ -453,7 +466,7 @@ describe('AssociateNotificationModal', () => {
       const options = screen.getAllByRole('option');
       const option = options.find(opt => opt.getAttribute('value') === 'event-1');
       expect(option).toBeDefined();
-      expect(option?.textContent).toMatch(/CONSULTA.*Dr\. Silva.*25\/10\/2024.*10:00-11:00/);
+      expect(option?.textContent).toMatch(/CONSULTA.*Dr\. Silva.*25\/10\/2024.*10:00 - 11:00/);
     });
 
     consoleSpy.mockRestore()
@@ -483,5 +496,110 @@ describe('AssociateNotificationModal', () => {
     fireEvent.click(cancelButton)
 
     expect(mockOnClose).toHaveBeenCalled()
+  })
+
+  it('handles direct notification (without payload)', async () => {
+    const mockDirectNotification = {
+      id: 'direct-notification-1',
+      protocol: 'L02',
+      title: 'Laudo - ko02',
+      fileName: 'Laudo-Resultado.jpg',
+      fileUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/',
+      status: 'VIEWED',
+      notificationId: 'notif-123',
+      sentAt: '2025-11-21T22:33:49.123Z',
+      receivedAt: '2025-11-21T22:44:57.773Z',
+      viewedAt: '2025-11-21T22:45:02.696Z'
+    }
+
+    await act(async () => {
+      render(
+        <AssociateNotificationModal
+          notification={mockDirectNotification}
+          open={true}
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+          userId={mockUserId}
+        />
+      )
+    })
+
+    await waitFor(() => {
+      const options = screen.getAllByRole('option');
+      const option = options.find(opt => opt.getAttribute('value') === 'event-1');
+      expect(option).toBeDefined();
+    });
+
+    const select = screen.getByRole('combobox')
+    fireEvent.change(select, { target: { value: 'event-1' } })
+
+    const associateButton = screen.getByText('Associar')
+    fireEvent.click(associateButton)
+
+    await waitFor(() => {
+      expect(mockOnSuccess).toHaveBeenCalled()
+      expect(mockOnClose).toHaveBeenCalled()
+    })
+  })
+
+  it('fetches external fileUrl for direct notification and associates it', async () => {
+    const externalFileUrl = 'http://fileserver.example/test-file.jpg'
+    const mockExternalNotification = {
+      id: 'direct-external-1',
+      protocol: 'L99',
+      title: 'Laudo externo',
+      fileName: 'externo.jpg',
+      fileUrl: externalFileUrl,
+      status: 'VIEWED',
+      notificationId: 'notif-ext-1'
+    }
+
+    // Mock fetch to handle file download + APIs
+    global.fetch = vi.fn((url: string, options?: any) => {
+      if (url === externalFileUrl) {
+        // retorna ArrayBuffer representando alguns bytes do arquivo
+        const buf = Uint8Array.from([0xFF, 0xD8, 0xFF]).buffer
+        return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(buf) } as any)
+      }
+      if (url.includes('/api/professionals')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProfessionals) } as Response)
+      }
+      if (url.includes('/api/events') && options && options.method === 'PUT') {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ id: 'event-1', files: [{ slot: 'result', name: 'externo.jpg', url: '/uploads/event-1/result-externo.jpg' }] }) } as Response)
+      }
+      if (url.includes('/api/events') && (!options || options.method === 'GET')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockEvents) } as Response)
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) } as Response)
+    }) as any
+
+    await act(async () => {
+      render(
+        <AssociateNotificationModal
+          notification={mockExternalNotification as any}
+          open={true}
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+          userId={mockUserId}
+        />
+      )
+    })
+
+    await waitFor(() => {
+      const options = screen.getAllByRole('option');
+      const option = options.find(opt => opt.getAttribute('value') === 'event-1');
+      expect(option).toBeDefined();
+    });
+
+    const select = screen.getByRole('combobox')
+    fireEvent.change(select, { target: { value: 'event-1' } })
+
+    const associateButton = screen.getByText('Associar')
+    fireEvent.click(associateButton)
+
+    await waitFor(() => {
+      expect(mockOnSuccess).toHaveBeenCalled()
+      expect(mockOnClose).toHaveBeenCalled()
+    })
   })
 })

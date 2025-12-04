@@ -5,6 +5,17 @@ import { Plus } from 'lucide-react'
 import { ProfessionalCard } from './ProfessionalCard'
 import { AddProfessionalModal } from './AddProfessionalModal'
 import { EditProfessionalModal } from './EditProfessionalModal'
+import { useEvents } from '../contexts/EventsContext'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog'
 
 interface Professional {
   id: string
@@ -15,17 +26,17 @@ interface Professional {
 }
 
 export interface ProfessionalsTabProps {
-  professionals: Professional[];
-  setProfessionals: React.Dispatch<React.SetStateAction<Professional[]>>;
   userId: string;
 }
 
-export function ProfessionalsTab(props: ProfessionalsTabProps) {
-  const { professionals, setProfessionals, userId } = props;
+export function ProfessionalsTab({ userId }: ProfessionalsTabProps) {
+  const { professionals, refreshData } = useEvents()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingProfessional, setEditingProfessional] =
     useState<Professional | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [professionalToDelete, setProfessionalToDelete] = useState<Professional | null>(null)
 
   // Especialidades do usuário (filtradas dos profissionais)
   const specialties =
@@ -95,11 +106,8 @@ export function ProfessionalsTab(props: ProfessionalsTabProps) {
       const savedProfessional = await response.json()
       console.log('Profissional salvo:', savedProfessional)
 
-      setProfessionals(
-        professionals.map((p) =>
-          p.id === savedProfessional.id ? savedProfessional : p
-        )
-      )
+      // Refresh data to update the context
+      await refreshData()
     } catch (error) {
       console.error('Erro ao editar profissional:', error)
       alert(`Erro ao editar profissional: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
@@ -107,17 +115,38 @@ export function ProfessionalsTab(props: ProfessionalsTabProps) {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este profissional?')) {
-      try {
-        const response = await fetch(`/api/professionals?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(userId)}`, {
-          method: 'DELETE',
-        })
-        if (!response.ok) throw new Error('Erro ao excluir profissional')
-        setProfessionals(professionals.filter((p) => p.id !== id))
-      } catch {
-        alert('Erro ao excluir profissional.')
+  const handleDelete = (id: string) => {
+    const prof = professionals.find((p) => p.id === id)
+    if (prof) {
+      setProfessionalToDelete(prof)
+      setIsDeleteDialogOpen(true)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!professionalToDelete) return
+    try {
+      const response = await fetch(`/api/professionals?id=${encodeURIComponent(professionalToDelete.id)}&userId=${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        // Treat "Professional not found" as success (idempotent delete)
+        if (response.status === 404 && errorData.error === 'Profissional não encontrado.') {
+          console.log('Profissional já foi deletado anteriormente')
+        } else {
+          throw new Error(errorData.error || 'Erro ao excluir profissional')
+        }
       }
+      
+      // Refresh data to update the context
+      await refreshData()
+      setIsDeleteDialogOpen(false)
+      setProfessionalToDelete(null)
+      console.log('Profissional deletado com sucesso:', professionalToDelete.name)
+    } catch (error) {
+      console.error('Erro ao excluir profissional:', error)
+      alert(`Erro ao excluir profissional: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
     }
   }
 
@@ -134,8 +163,9 @@ export function ProfessionalsTab(props: ProfessionalsTabProps) {
         body: JSON.stringify({ ...professional, userId }),
       })
       if (!response.ok) throw new Error('Erro ao adicionar profissional')
-      const savedProfessional = await response.json()
-      setProfessionals([...professionals, savedProfessional])
+      
+      // Refresh data to update the context
+      await refreshData()
     } catch {
       alert('Erro ao adicionar profissional.')
     }
@@ -207,6 +237,31 @@ export function ProfessionalsTab(props: ProfessionalsTabProps) {
           onSave={handleSaveEdit}
         />
       )}
+
+      {/* Dialog de Confirmação de Deleção */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o profissional "{professionalToDelete?.name}"?
+              <br />
+              <br />
+              <strong>Nota:</strong> Se este profissional tiver eventos com arquivos associados,
+              esses arquivos serão preservados no repositório como "arquivos órfãos" e poderão
+              ser gerenciados ou deletados posteriormente na área de arquivos órfãos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setProfessionalToDelete(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

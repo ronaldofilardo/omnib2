@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// Mock auth
+vi.mock('../../../src/lib/auth', () => ({
+  auth: vi.fn(),
+}))
+
 // Mock do lib/prisma.ts antes de importar a rota
-vi.mock('@/lib/prisma', () => ({
+vi.mock('../../../src/lib/prisma', () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
@@ -14,7 +19,8 @@ vi.mock('@/lib/prisma', () => ({
 
 // Importar a rota e o prisma mockado depois do mock
 import { GET } from '../../../src/app/api/repository/route'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../../../src/lib/prisma'
+import { auth } from '../../../src/lib/auth'
 
 // Criar referência tipada para o mock
 const mockPrisma = prisma as any
@@ -22,10 +28,11 @@ const mockPrisma = prisma as any
 describe('/api/repository', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    ;(auth as any).mockResolvedValue({ id: 'user-1', role: 'RECEPTOR' })
   })
 
   describe('GET', () => {
-    it('should return events with files for userId in query', async () => {
+    it('should return events with files for authenticated user', async () => {
       const mockEvents = [
         {
           id: 'event-1',
@@ -63,7 +70,7 @@ describe('/api/repository', () => {
 
       mockPrisma.healthEvent.findMany.mockResolvedValue(mockEvents)
 
-      const req = { url: 'http://localhost/api/repository?userId=user-1' } as Request
+      const req = { url: 'http://localhost/api/repository' } as Request
       const response = await GET(req)
       const data = await response.json()
 
@@ -75,6 +82,7 @@ describe('/api/repository', () => {
         },
         include: {
           professional: true,
+          files: true,
         },
         orderBy: {
           date: 'desc',
@@ -85,24 +93,25 @@ describe('/api/repository', () => {
     it('should return empty array when no events with files exist', async () => {
       const mockEvents: any[] = []
       mockPrisma.healthEvent.findMany.mockResolvedValue(mockEvents)
-      const req = { url: 'http://localhost/api/repository?userId=user-1' } as Request
+      const req = { url: 'http://localhost/api/repository' } as Request
       const response = await GET(req)
       const data = await response.json()
       expect(response.status).toBe(200)
       expect(data).toEqual([])
     })
 
-    it('should return 400 if userId is missing', async () => {
+    it('should return 401 if user is not authenticated', async () => {
+      ;(auth as any).mockResolvedValue(null)
       const req = { url: 'http://localhost/api/repository' } as Request
       const response = await GET(req)
       const data = await response.json()
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('userId é obrigatório')
+      expect(response.status).toBe(401)
+      expect(data.error).toBe('Não autorizado')
     })
 
     it('should return 500 on database error during events lookup', async () => {
       mockPrisma.healthEvent.findMany.mockRejectedValue(new Error('Database error'))
-      const req = { url: 'http://localhost/api/repository?userId=user-1' } as Request
+      const req = { url: 'http://localhost/api/repository' } as Request
       const response = await GET(req)
       const data = await response.json()
       expect(response.status).toBe(500)
@@ -110,14 +119,12 @@ describe('/api/repository', () => {
     })
 
     it('should return 500 on database error during events lookup', async () => {
-      const mockUser = { id: 'user-1' }
-
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser)
       mockPrisma.healthEvent.findMany.mockRejectedValue(
         new Error('Database error')
       )
 
-      const response = await GET()
+      const req = { url: 'http://localhost/api/repository' } as Request
+      const response = await GET(req)
       const data = await response.json()
 
       expect(response.status).toBe(500)
@@ -142,7 +149,7 @@ describe('/api/repository', () => {
         },
       ]
       mockPrisma.healthEvent.findMany.mockResolvedValue([mockEvents[0]])
-      const req = { url: 'http://localhost/api/repository?userId=user-1' } as Request
+      const req = { url: 'http://localhost/api/repository' } as Request
       const response = await GET(req)
       const data = await response.json()
       expect(response.status).toBe(200)
@@ -185,7 +192,7 @@ describe('/api/repository', () => {
         mockEvents[1],
         mockEvents[0],
       ])
-      const req = { url: 'http://localhost/api/repository?userId=user-1' } as Request
+      const req = { url: 'http://localhost/api/repository' } as Request
       const response = await GET(req)
       const data = await response.json()
       expect(response.status).toBe(200)

@@ -39,9 +39,9 @@ test.describe('Testes de Autorização e Redirecionamento por Papel', () => {
 
       for (const route of emissorRoutes) {
         await page.goto(route)
-        // Deve permanecer logado e ver o sidebar
-        await expect(page.getByText('OmniSaúde')).toBeVisible()
-        await expect(page.getByText('Portal de envio')).toBeVisible()
+        // Deve permanecer logado e ver o sidebar do emissor
+        await expect(page.locator('[data-testid="sidebar"]')).toBeVisible()
+        await expect(page.getByText('Portal de Envio')).toBeVisible()
       }
     })
 
@@ -90,7 +90,7 @@ test.describe('Testes de Autorização e Redirecionamento por Papel', () => {
       for (const route of receptorRoutes) {
         await page.goto(route)
         // Deve permanecer logado e ver o sidebar
-        await expect(page.getByText('OmniSaúde')).toBeVisible()
+        await expect(page.locator('[data-testid="sidebar"]')).toBeVisible()
         await expect(page.getByText('Timeline')).toBeVisible()
       }
     })
@@ -109,19 +109,20 @@ test.describe('Testes de Autorização e Redirecionamento por Papel', () => {
   test.describe('Usuário não autenticado', () => {
     test('deve ser redirecionado para login ao tentar acessar qualquer rota protegida', async ({ page }) => {
       const protectedRoutes = [
-        '/(emissor)/laudos',
-        '/(emissor)/relatorios',
-        '/(receptor)/timeline',
-        '/(receptor)/professionals',
-        '/(receptor)/repository',
-        '/(receptor)/calendar',
-        '/(receptor)/notifications',
-        '/(receptor)/dadospessoais'
+        '/laudos',
+        '/relatorios',
+        '/timeline',
+        '/professionals',
+        '/repository',
+        '/calendar',
+        '/notifications',
+        '/dadospessoais'
       ]
 
       for (const route of protectedRoutes) {
         await page.goto(route)
         // Deve ser redirecionado para login
+        await page.waitForURL('/login')
         await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible()
       }
     })

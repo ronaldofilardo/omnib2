@@ -1,12 +1,30 @@
+import { NextResponse } from 'next/server'
+import { EventType, Prisma } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
+import { logDocumentSubmission } from '@/lib/services/auditService'
+import { calculateFileHashFromBase64 } from '@/lib/utils/fileHashServer'
+import {
+  validateDate,
+  validateStartTime,
+  validateEndTime,
+  validateEventDateTime,
+} from '@/lib/validators/eventValidators'
+import fs from 'fs'
+import { promises as fsPromises } from 'fs'
+import path from 'path'
+import { createJsonResponse } from '@/lib/json-serializer'
+
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
+
 export async function PUT(req: Request) {
   type UpdateEventBody = {
     id: string
     title: string
-  description?: string
-  observation?: string
+    description?: string
+    observation?: string
     date: string
     type: EventType
     startTime: string
@@ -17,6 +35,11 @@ export async function PUT(req: Request) {
   }
   let body: UpdateEventBody | undefined = undefined
   try {
+    const user = await auth()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+    const userId = user.id
     body = await req.json()
     const {
       id,
@@ -30,93 +53,234 @@ export async function PUT(req: Request) {
       files,
       notificationId,
     } = body as UpdateEventBody
-    if (
-      !id ||
-      !title ||
-      !date ||
-      !type ||
-      !startTime ||
-      !endTime ||
-      !professionalId
-    ) {
-      console.warn(
-        `[API Events] Campos obrigatórios ausentes para atualização:`,
-        {
-          id,
-          title,
-          date,
-          type,
-          startTime,
-          endTime,
-          professionalId,
+
+    // Determinar se é atualização apenas de arquivos (não requer campos do evento)
+    const isFileOnlyUpdate = files && !title && !date && !type && !professionalId
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID do evento é obrigatório' },
+        { status: 400 }
+      )
+    }
+
+    // Para atualizações completas do evento, validar campos obrigatórios
+    if (!isFileOnlyUpdate) {
+      if (
+        !title ||
+        !date ||
+        !type ||
+        (!notificationId && (!startTime || !endTime)) ||
+        !professionalId
+      ) {
+        console.warn(
+          `[API Events] Campos obrigatórios ausentes para atualização completa:`,
+          {
+            id,
+            title,
+            date,
+            type,
+            startTime: startTime || 'não fornecido',
+            endTime: endTime || 'não fornecido',
+            professionalId,
+            notificationId,
+          }
+        )
+        return NextResponse.json(
+          { error: 'Campos obrigatórios ausentes' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Validar data e horários apenas se fornecidos e não for atualização apenas de arquivos
+    if (!isFileOnlyUpdate && startTime && endTime) {
+      const validation = validateEventDateTime(date, startTime, endTime)
+      if (!validation.isValid) {
+        const errorMessages = Object.values(validation.errors).join(' ')
+        console.warn(
+          `[API Events] Validação falhou na atualização:`,
+          validation.errors
+        )
+        return NextResponse.json(
+          { error: errorMessages || 'Dados inválidos' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Processar datas e horários apenas se NÃO for atualização apenas de arquivos
+    let utcDate: string | undefined;
+    let startDateTime: Date | undefined;
+    let endDateTime: Date | undefined;
+
+    if (!isFileOnlyUpdate) {
+      // Se notificationId for fornecido, estamos apenas associando notificação
+      // Nesse caso, não fazer conversão de fuso horário pois a data já está correta
+      if (notificationId) {
+        utcDate = date; // Usar data como recebida, sem conversão de fuso
+      } else {
+        // Para criação/edição normal, fazer conversão de fuso horário
+        if (!date) {
+          return NextResponse.json(
+            { error: 'Data é obrigatória para atualização completa do evento' },
+            { status: 400 }
+          )
         }
-      )
-      return NextResponse.json(
-        { error: 'Campos obrigatórios ausentes' },
-        { status: 400 }
-      )
-    }
+        const localDate = new Date(`${date}T12:00:00`) // Meio dia para evitar problemas de timezone
+        utcDate = localDate.toISOString().split('T')[0] // YYYY-MM-DD em UTC
+      }
 
-    // Validar data e horários
-    const validation = validateEventDateTime(date, startTime, endTime)
-    if (!validation.isValid) {
-      const errorMessages = Object.values(validation.errors).join(' ')
-      console.warn(
-        `[API Events] Validação falhou na atualização:`,
-        validation.errors
-      )
-      return NextResponse.json(
-        { error: errorMessages || 'Dados inválidos' },
-        { status: 400 }
-      )
-    }
+      // Converter horários para Date objects apenas se fornecidos
+      if (startTime && endTime) {
+        const [year, month, day] = date.split('-').map(Number);
+        const [startHour, startMinute] = startTime.split(':').map(Number);
+        const [endHour, endMinute] = endTime.split(':').map(Number);
 
-    // Converter data para UTC (assumindo que a data recebida é local)
-    const localDate = new Date(`${date}T12:00:00`) // Meio dia para evitar problemas de timezone
-    const utcDate = localDate.toISOString().split('T')[0] // YYYY-MM-DD em UTC
+        startDateTime = new Date(year, month - 1, day, startHour, startMinute, 0, 0);
+        endDateTime = new Date(year, month - 1, day, endHour, endMinute, 0, 0);
+      }
+
+      // Verificar sobreposição de eventos apenas se horários foram fornecidos
+      if (startDateTime && endDateTime) {
+        let overlappingEvents = []
+        try {
+          overlappingEvents = (await prisma.healthEvent.findMany({
+            where: {
+              professionalId,
+              date: new Date(utcDate!),
+              id: { not: id }, // Excluir o evento atual da verificação
+              AND: [
+                {
+                  startTime: { lte: endDateTime },
+                },
+                {
+                  endTime: { gte: startDateTime },
+                },
+              ],
+            },
+          })) || []
+        } catch (error) {
+          console.warn('[API Events] Erro ao verificar sobreposição:', error)
+          overlappingEvents = []
+        }
+        if (overlappingEvents.length > 0) {
+          return NextResponse.json(
+            { error: 'Já existe um evento para este profissional neste horário (sobreposição).' },
+            { status: 400 }
+          )
+        }
+      }
+    }
 
     // Se notificationId for fornecido, atualizar evento e arquivar notificação em transação
     if (notificationId) {
       const overwrite = req.headers.get('x-overwrite-result') === 'true';
+      const slot = req.headers.get('x-slot') || 'result';
       const result = await prisma.$transaction(async (tx) => {
-        // Buscar evento existente
-        const existing = await tx.healthEvent.findUnique({ where: { id } })
+        // Buscar evento existente com arquivos
+        const existing = await tx.healthEvent.findUnique({
+          where: { id, userId },
+          include: { files: true }
+        })
         if (!existing) {
           throw new Error('Evento não encontrado')
         }
-        // Verificar se já existe laudo no slot result
+        // Verificar se já existe arquivo no slot especificado
         const filesArr = Array.isArray(files) ? files : [];
-        const alreadyHasResult = Array.isArray(existing.files)
-          ? existing.files.some((f: any) => f.slot === 'result')
-          : false;
-        if (alreadyHasResult && !overwrite) {
-          return { conflict: true, message: 'Já existe um laudo para este evento. Deseja sobrescrever?' };
+        const alreadyHasFileInSlot = existing.files.some((f) => f.slot === slot);
+        if (alreadyHasFileInSlot && !overwrite) {
+          const slotNames = { request: 'solicitação', authorization: 'autorização', certificate: 'atestado', result: 'laudo', prescription: 'prescrição', invoice: 'nota fiscal' };
+          const slotName = slotNames[slot as keyof typeof slotNames] || slot;
+          return { conflict: true, message: `Já existe um ${slotName} para este evento. Deseja sobrescrever?` };
         }
-        // Permitir sobrescrever: remove o antigo e adiciona o novo
-        let mergedFiles = Array.isArray(existing.files) ? existing.files.filter((f: any) => f.slot !== 'result') : [];
-        for (const f of filesArr) {
-          mergedFiles = mergedFiles.filter((file: any) => file.slot !== f.slot);
-          mergedFiles.push(f);
+        // Deletar apenas arquivo do slot correspondente (ex: laudo)
+        await tx.files.deleteMany({ where: { eventId: id, slot } });
+        // Atualizar evento - apenas campos fornecidos
+        const updateData: any = {
+          title,
+          description,
+          // Para associação de notificação, preservar a data existente do evento
+          // Não fazer conversão de timezone para evitar shift de data
+          date: existing.date,
+          type,
+          professionalId,
+        };
+        
+        // Só incluir horários se foram fornecidos
+        if (startTime && endTime) {
+          updateData.startTime = new Date(`${utcDate}T${startTime}:00Z`);
+          updateData.endTime = new Date(`${utcDate}T${endTime}:00Z`);
         }
-        // Atualizar evento
+        
         const event = await tx.healthEvent.update({
-          where: { id },
-          data: {
-            title,
-            description,
-            date: utcDate,
-            startTime,
-            endTime,
-            type,
-            professionalId,
-            files: mergedFiles,
-          },
+          where: { id, userId },
+          data: updateData,
         });
+        // Criar novo arquivo apenas se houver arquivo para o slot
+        if (filesArr.length > 0) {
+          const slotFiles = filesArr.filter(f => f.slot === slot);
+          if (slotFiles.length > 0) {
+            const createdFiles = await tx.files.createMany({
+              data: slotFiles.map((f: any) => ({
+                id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : require('crypto').randomUUID(),
+                eventId: id,
+                professionalId,
+                slot: f.slot,
+                name: f.name,
+                url: f.url,
+                physicalPath: f.physicalPath,
+                uploadDate: f.uploadDate,
+                expiryDate: f.expiryDate,
+              })),
+            });
+            // Salvar arquivos fisicamente se content presente
+            for (const f of slotFiles) {
+              if (f.content) {
+                try {
+                  const buffer = Buffer.from(f.content, 'base64')
+                  const uploadDir = path.join(process.cwd(), 'public', 'uploads', id.toString())
+                  await fsPromises.mkdir(uploadDir, { recursive: true })
+                  const filePath = path.join(uploadDir, `${f.slot}-${f.name}`)
+                  await fsPromises.writeFile(filePath, buffer)
+                  
+                  // Calcular hash SHA-256 do arquivo
+                  const fileHash = calculateFileHashFromBase64(f.content);
+                  
+                  // Buscar dados completos do usuário para o CPF
+                  const fullUser = await prisma.user.findUnique({ where: { id: user.id } });
+                  
+                  // Registrar no audit log
+                  await logDocumentSubmission({
+                    origin: 'PORTAL_LOGADO',
+                    receiverCpf: fullUser?.cpf?.replace(/\D/g, '') || 'desconhecido',
+                    patientId: user.id,
+                    patientName: user.name || null,
+                    fileName: f.name,
+                    fileHash: fileHash,
+                    protocol: null,
+                    ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'portal-interno',
+                    userAgent: req.headers.get('user-agent') || null,
+                    status: 'SUCCESS',
+                  });
+                } catch (fileError) {
+                  throw fileError
+                }
+              }
+            }
+          }
+        }
         await tx.notification.update({
           where: { id: notificationId },
           data: { status: 'ARCHIVED' },
         });
-        return event;
+
+        // Retornar evento com arquivos incluídos
+        const eventWithFiles = await tx.healthEvent.findUnique({
+          where: { id, userId },
+          include: { files: true }
+        });
+        return eventWithFiles;
       });
       if (result && (result as any).conflict) {
         return NextResponse.json({ warning: (result as any).message }, { status: 409 });
@@ -126,21 +290,188 @@ export async function PUT(req: Request) {
       }
       return NextResponse.json(result, { status: 200 })
     } else {
-      const event = await prisma.healthEvent.update({
-        where: { id },
-        data: {
-          title,
-          description,
-          date: utcDate,
-          startTime,
-          endTime,
-          type,
-          professionalId,
-          files: files || [],
-        },
-      })
-      console.log(`[API Events] Evento atualizado com sucesso: ${event.id}`)
-      return NextResponse.json(event, { status: 200 })
+      // Verificar se é atualização apenas de arquivos
+      if (isFileOnlyUpdate) {
+        console.log(`[API Events] Atualização apenas de arquivos para evento: ${id}`)
+
+        // Buscar evento existente para obter professionalId
+        const existingEvent = await prisma.healthEvent.findUnique({
+          where: { id, userId },
+          select: { professionalId: true }
+        })
+
+        if (!existingEvent) {
+          return NextResponse.json({ error: 'Evento não encontrado' }, { status: 404 })
+        }
+
+        // Processar arquivos (criar novos, não deletar existentes)
+        const filesArr = Array.isArray(files) ? files : [];
+        if (filesArr.length > 0) {
+          await prisma.files.createMany({
+            data: filesArr.map((f: any) => {
+              let uploadDate: Date | null = null;
+              let expiryDate: Date | null = null;
+
+              try {
+                uploadDate = f.uploadDate ? new Date(f.uploadDate) : null;
+                // Validar se a data é válida
+                if (uploadDate && isNaN(uploadDate.getTime())) {
+                  uploadDate = null;
+                }
+              } catch {
+                uploadDate = null;
+              }
+
+              try {
+                expiryDate = f.expiryDate ? new Date(f.expiryDate) : null;
+                // Validar se a data é válida
+                if (expiryDate && isNaN(expiryDate.getTime())) {
+                  expiryDate = null;
+                }
+              } catch {
+                expiryDate = null;
+              }
+
+              return {
+                id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : require('crypto').randomUUID(),
+                eventId: id,
+                professionalId: existingEvent.professionalId,
+                slot: f.slot,
+                name: f.name,
+                url: f.url,
+                physicalPath: f.physicalPath,
+                uploadDate,
+                expiryDate,
+              };
+            }),
+          })
+
+          // Salvar arquivos fisicamente se content presente
+          for (const f of filesArr) {
+            if (f.content) {
+              console.log(`[API Events] Salvando arquivo: ${f.name} no slot ${f.slot} para evento ${id}`)
+              try {
+                const buffer = Buffer.from(f.content, 'base64')
+                const uploadDir = path.join(process.cwd(), 'public', 'uploads', id.toString())
+                await fsPromises.mkdir(uploadDir, { recursive: true })
+                const filePath = path.join(uploadDir, `${f.slot}-${f.name}`)
+                await fsPromises.writeFile(filePath, buffer)
+                console.log(`[API Events] Arquivo salvo com sucesso: ${filePath}`)
+              } catch (fileError) {
+                console.error(`[API Events] Erro ao salvar arquivo ${f.name}:`, fileError)
+                throw fileError
+              }
+            }
+          }
+        }
+
+        // Retornar evento com arquivos incluídos (dados originais preservados)
+        const eventWithFiles = await prisma.healthEvent.findUnique({
+          where: { id, userId },
+          include: { files: true }
+        });
+
+        console.log(`[API Events] Arquivos adicionados ao evento: ${id}`)
+        return createJsonResponse(eventWithFiles, { status: 200 })
+
+      } else {
+        // Atualização completa do evento (lógica original)
+        // Verificar se utcDate foi definido (deve ter sido no bloco if (!isFileOnlyUpdate))
+        if (!utcDate) {
+          return NextResponse.json(
+            { error: 'Erro interno: data não foi processada corretamente' },
+            { status: 500 }
+          )
+        }
+        // Deletar arquivos existentes
+        await prisma.files.deleteMany({ where: { eventId: id } });
+        // Atualizar evento
+        const event = await prisma.healthEvent.update({
+          where: { id, userId },
+          data: {
+            title,
+            description,
+            date: new Date(utcDate),
+            startTime: new Date(`${utcDate}T${startTime}:00Z`),
+            endTime: new Date(`${utcDate}T${endTime}:00Z`),
+            type,
+            professionalId,
+          },
+        })
+        // Criar novos arquivos
+        const filesArr = Array.isArray(files) ? files : [];
+        if (filesArr.length > 0) {
+          await prisma.files.createMany({
+            data: filesArr.map((f: any) => {
+              let uploadDate: Date | null = null;
+              let expiryDate: Date | null = null;
+
+              try {
+                uploadDate = f.uploadDate ? new Date(f.uploadDate) : null;
+                // Validar se a data é válida
+                if (uploadDate && isNaN(uploadDate.getTime())) {
+                  uploadDate = null;
+                }
+              } catch {
+                uploadDate = null;
+              }
+
+              try {
+                expiryDate = f.expiryDate ? new Date(f.expiryDate) : null;
+                // Validar se a data é válida
+                if (expiryDate && isNaN(expiryDate.getTime())) {
+                  expiryDate = null;
+                }
+              } catch {
+                expiryDate = null;
+              }
+
+              return {
+                id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : require('crypto').randomUUID(),
+                eventId: id,
+                professionalId,
+                slot: f.slot,
+                name: f.name,
+                url: f.url,
+                physicalPath: f.physicalPath,
+                uploadDate,
+                expiryDate,
+              };
+            }),
+          })
+
+          // Salvar arquivos fisicamente se content presente
+          for (const f of filesArr) {
+            if (f.content) {
+              console.log(`[API Events] Salvando arquivo: ${f.name} no slot ${f.slot} para evento ${id}`)
+              try {
+                const buffer = Buffer.from(f.content, 'base64')
+                const uploadDir = path.join(process.cwd(), 'public', 'uploads', id.toString())
+                await fsPromises.mkdir(uploadDir, { recursive: true })
+                const filePath = path.join(uploadDir, `${f.slot}-${f.name}`)
+                await fsPromises.writeFile(filePath, buffer)
+                console.log(`[API Events] Arquivo salvo com sucesso: ${filePath}`)
+              } catch (fileError) {
+                console.error(`[API Events] Erro ao salvar arquivo ${f.name}:`, fileError)
+                throw fileError
+              }
+            }
+          }
+        }
+
+        // Retornar evento com arquivos incluídos
+        const eventWithFiles = await prisma.healthEvent.findUnique({
+          where: { id, userId },
+          include: { files: true }
+        });
+
+        if (!eventWithFiles) {
+          throw new Error('Evento não encontrado após atualização')
+        }
+
+        console.log(`[API Events] Evento atualizado com sucesso: ${eventWithFiles.id}`)
+        return createJsonResponse(eventWithFiles, { status: 200 })
+      }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -159,17 +490,6 @@ export async function PUT(req: Request) {
     )
   }
 }
-import { NextResponse } from 'next/server'
-import { EventType, Prisma } from '@prisma/client'
-import { prisma } from '@/lib/prisma'
-import {
-  validateDate,
-  validateStartTime,
-  validateEndTime,
-  validateEventDateTime,
-} from '@/lib/validators/eventValidators'
-import fs from 'fs'
-import path from 'path'
 
 const DEFAULT_USER_EMAIL = 'user@email.com'
 
@@ -188,19 +508,75 @@ function getUserIdFromUrl(req: Request): string | null {
 
 export async function GET(req: Request) {
   try {
-    const userId = getUserIdFromUrl(req)
-    if (!userId) {
-      return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 })
+    const user = await auth()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
-    console.log(`[API Events] Buscando eventos para usuário: ${userId}`)
-    const events = await prisma.healthEvent.findMany({
-      where: { userId },
-    })
-    console.log(`[API Events] Encontrados ${events.length} eventos`)
-    return NextResponse.json(events, {
+    const userId = user.id
+
+    // Extrair parâmetros de paginação
+    const url = new URL(req.url)
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'))
+    const limit = Math.min(1000, Math.max(1, parseInt(url.searchParams.get('limit') || '20'))) // Máx 1000, default 20
+    const offset = (page - 1) * limit
+
+    console.log(`[API Events] Buscando eventos para usuário: ${userId}, página: ${page}, limite: ${limit}`)
+
+    // Query otimizada com paginação e select limitado
+    const [events, totalCount] = await Promise.all([
+      prisma.healthEvent.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          date: true,
+          type: true,
+          startTime: true,
+          endTime: true,
+          professionalId: true,
+          professional: {
+            select: {
+              id: true,
+              name: true,
+              specialty: true
+            }
+          },
+          files: {
+            select: {
+              id: true,
+              slot: true,
+              name: true,
+              url: true,
+              uploadDate: true
+            },
+            where: { isOrphaned: false } // Só arquivos não órfãos
+          }
+        },
+        orderBy: { date: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      prisma.healthEvent.count({ where: { userId } })
+    ])
+
+    console.log(`[API Events] Encontrados ${events.length} eventos de ${totalCount} total`)
+
+    return createJsonResponse({
+      events,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        hasNext: offset + limit < totalCount,
+        hasPrev: page > 1
+      }
+    }, {
+      status: 200,
       headers: {
-        // Evita cache no edge/CDN e no browser, garantindo atualização imediata.
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        // Cache mais agressivo para dados paginados
+        'Cache-Control': 'private, max-age=300', // 5 minutos
       },
     })
   } catch (error) {
@@ -235,11 +611,12 @@ export async function POST(req: Request) {
   }
   let body: EventBody | undefined = undefined
   try {
-    body = await req.json()
-    const userId = getUserIdFromUrl(req)
-    if (!userId) {
-      return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 })
+    const user = await auth()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
+    const userId = user.id
+    body = await req.json()
     const {
       title,
       description,
@@ -288,17 +665,38 @@ export async function POST(req: Request) {
     const localDate = new Date(`${date}T12:00:00`) // Meio dia para evitar problemas de timezone
     const utcDate = localDate.toISOString().split('T')[0] // YYYY-MM-DD em UTC
 
+    // Validar se o profissional existe
+    const professional = await prisma.professional.findUnique({
+      where: { id: professionalId }
+    });
+    if (!professional) {
+      console.warn(`[API Events] Profissional não encontrado: ${professionalId}`);
+      return NextResponse.json(
+        { error: 'Profissional não encontrado. Por favor, selecione um profissional válido.' },
+        { status: 400 }
+      );
+    }
+
+    // Converter horários para Date objects SEM adicionar timezone UTC
+    // Usar a data local diretamente para evitar conversão de timezone
+    const [year, month, day] = date.split('-').map(Number);
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    
+    const startDateTime = new Date(year, month - 1, day, startHour, startMinute, 0, 0);
+    const endDateTime = new Date(year, month - 1, day, endHour, endMinute, 0, 0);
+    
     // Verificar sobreposição de eventos para o mesmo profissional, data e horário
     const overlappingEvents = await prisma.healthEvent.findMany({
       where: {
         professionalId,
-        date: utcDate,
+        date: new Date(utcDate),
         AND: [
           {
-            startTime: { lte: endTime },
+            startTime: { lte: endDateTime },
           },
           {
-            endTime: { gte: startTime },
+            endTime: { gte: startDateTime },
           },
         ],
       },
@@ -322,15 +720,30 @@ export async function POST(req: Request) {
             title,
             description: desc,
             observation,
-            date: utcDate,
-            startTime,
-            endTime,
+            date: new Date(utcDate),
+            startTime: startDateTime,
+            endTime: endDateTime,
             type,
             userId,
             professionalId,
-            files: files || [],
           },
         })
+        // Criar arquivos se fornecidos
+        if (files && Array.isArray(files)) {
+          await tx.files.createMany({
+            data: files.map((f: any) => ({
+              id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : require('crypto').randomUUID(),
+              eventId: event.id,
+              professionalId,
+              slot: f.slot,
+              name: f.name,
+              url: f.url,
+              physicalPath: f.physicalPath,
+              uploadDate: f.uploadDate ? new Date(f.uploadDate) : null,
+              expiryDate: f.expiryDate ? new Date(f.expiryDate) : null,
+            }))
+          })
+        }
         await tx.notification.update({
           where: { id: notificationId },
           data: { status: 'ARCHIVED' },
@@ -345,17 +758,32 @@ export async function POST(req: Request) {
           title,
           description,
           observation,
-          date: utcDate,
-          startTime,
-          endTime,
+          date: new Date(utcDate),
+          startTime: startDateTime,
+          endTime: endDateTime,
           type,
           userId,
           professionalId,
-          files: files || [],
         },
       })
+      // Criar arquivos se fornecidos
+      if (files && Array.isArray(files)) {
+        await prisma.files.createMany({
+          data: files.map((f: any) => ({
+            id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : require('crypto').randomUUID(),
+            eventId: event.id,
+            professionalId,
+            slot: f.slot,
+            name: f.name,
+            url: f.url,
+            physicalPath: f.physicalPath,
+            uploadDate: f.uploadDate ? new Date(f.uploadDate) : null,
+            expiryDate: f.expiryDate ? new Date(f.expiryDate) : null,
+          }))
+        })
+      }
       console.log(`[API Events] Evento criado com sucesso: ${event.id}`)
-      return NextResponse.json(event, { status: 201 })
+      return createJsonResponse(event, { status: 201 })
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -379,10 +807,15 @@ export async function DELETE(req: Request) {
   type DeleteBody = { id: string; deleteFiles?: boolean }
   let body: DeleteBody | undefined = undefined
   try {
+    const user = await auth()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+    const userId = user.id
     body = await req.json()
     const { id, deleteFiles = false } = body as DeleteBody
     console.log(
-      `[API Events] Deletando evento: ${id}, deleteFiles: ${deleteFiles}`
+      `[API Events] Deletando evento: ${id}, deleteFiles: ${deleteFiles}, userId: ${userId}`
     )
 
     if (!id) {
@@ -395,8 +828,8 @@ export async function DELETE(req: Request) {
 
     // Buscar o evento para obter os arquivos antes de deletar
     const event = await prisma.healthEvent.findUnique({
-      where: { id },
-      select: { files: true },
+      where: { id, userId },
+      include: { files: true },
     })
 
     if (!event) {
@@ -407,43 +840,31 @@ export async function DELETE(req: Request) {
       )
     }
 
-    // Se deleteFiles for true, deletar arquivos associados
-    if (deleteFiles && event.files && Array.isArray(event.files)) {
-      for (const file of event.files as any[]) {
-        if (file && typeof file === 'object' && 'url' in file && file.url) {
-          try {
-            // Extrair o caminho relativo do arquivo da URL (aceita relativa)
-            const rawUrl = String(file.url)
-            const url = rawUrl.startsWith('http')
-              ? new URL(rawUrl)
-              : new URL(rawUrl, 'http://localhost')
-            const filePath = url.pathname.replace(
-              '/uploads/',
-              'public/uploads/'
-            )
-            const fullPath = path.join(process.cwd(), filePath)
-
-            // Deletar arquivo do sistema de arquivos
-            if (fs.existsSync(fullPath)) {
-              fs.unlinkSync(fullPath)
-              console.log(`[API Events] Arquivo deletado: ${fullPath}`)
-            } else {
-              console.warn(`[API Events] Arquivo não encontrado: ${fullPath}`)
-            }
-          } catch (fileError) {
-            console.error(
-              `[API Events] Erro ao deletar arquivo ${file.url}:`,
-              fileError
-            )
-            // Não falhar a operação se não conseguir deletar um arquivo
+    if (event.files && event.files.length > 0) {
+      if (deleteFiles) {
+        // Deletar arquivos completamente
+        await prisma.files.deleteMany({ where: { eventId: id } })
+        console.log(`[API Events] ${event.files.length} arquivo(s) deletado(s) completamente`)
+      } else {
+        // Marcar arquivos como órfãos ANTES de deletar evento
+        const professional = await prisma.professional.findUnique({ where: { id: event.professionalId || '' }, select: { name: true } })
+        const professionalName = professional?.name || 'Profissional não informado'
+        const eventTypeLabel = event.type === 'CONSULTA' ? 'Consulta' : 'Exame'
+        await prisma.files.updateMany({
+          where: { eventId: id },
+          data: {
+            isOrphaned: true,
+            orphanedReason: `${eventTypeLabel} - ${professionalName}: '${event.title}' foi deletado em ${new Date().toLocaleDateString('pt-BR')}`,
           }
-        }
+        })
+        // O eventId será automaticamente SET NULL pelo onDelete: SetNull do banco
+        console.log(`[API Events] ${event.files.length} arquivo(s) marcado(s) como órfão(s)`)
       }
     }
 
     // Deletar o evento
     await prisma.healthEvent.delete({
-      where: { id },
+      where: { id, userId },
     })
     console.log(`[API Events] Evento deletado com sucesso: ${id}`)
     return NextResponse.json({ success: true })

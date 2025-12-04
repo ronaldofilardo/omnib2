@@ -1,4 +1,0 @@
-src/components/[componentes sem .test.tsx]/[component].test.tsx
-test('hello world!', () => {
-    expect(true).toBe(true);
-});

@@ -11,6 +11,7 @@ vi.mock('bcryptjs', () => ({
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
     },
   },
@@ -37,9 +38,11 @@ describe('/api/auth/login', () => {
         email: 'test@example.com',
         password: 'hashed-password',
         name: 'Test User',
+        role: 'RECEPTOR',
+        emailVerified: true,
       }
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser)
+      mockPrisma.user.findFirst.mockResolvedValue(mockUser)
       mockBcrypt.compare.mockResolvedValue(true)
 
       const requestBody = {
@@ -49,7 +52,11 @@ describe('/api/auth/login', () => {
 
       const mockRequest = {
         json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
+        cookies: {},
+        nextUrl: {},
+        page: {},
+        ua: '',
+      } as any
 
       const response = await POST(mockRequest)
       const data = await response.json()
@@ -59,13 +66,68 @@ describe('/api/auth/login', () => {
         id: 'user-1',
         email: 'test@example.com',
         name: 'Test User',
+        role: 'RECEPTOR',
+        emailVerified: true,
       })
       expect(data.user).not.toHaveProperty('password')
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'test@example.com' },
+      expect(mockPrisma.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          email: { equals: 'test@example.com', mode: 'insensitive' },
+        },
+        include: { emissorInfo: true },
       })
       expect(mockBcrypt.compare).toHaveBeenCalledWith(
         'password123',
+        'hashed-password'
+      )
+    })
+
+    it('should login successfully with valid credentials for ADMIN', async () => {
+      const mockUser = {
+        id: 'admin-1',
+        email: 'admin@omni.com',
+        password: 'hashed-password',
+        name: 'Admin User',
+        role: 'ADMIN',
+        emailVerified: true,
+      }
+
+      mockPrisma.user.findFirst.mockResolvedValue(mockUser)
+      mockBcrypt.compare.mockResolvedValue(true)
+
+      const requestBody = {
+        email: 'admin@omni.com',
+        password: '123456',
+      }
+
+      const mockRequest = {
+        json: vi.fn().mockResolvedValue(requestBody),
+        cookies: {},
+        nextUrl: {},
+        page: {},
+        ua: '',
+      } as any
+
+      const response = await POST(mockRequest)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.user).toEqual({
+        id: 'admin-1',
+        email: 'admin@omni.com',
+        name: 'Admin User',
+        role: 'ADMIN',
+        emailVerified: true,
+      })
+      expect(data.user).not.toHaveProperty('password')
+      expect(mockPrisma.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          email: { equals: 'admin@omni.com', mode: 'insensitive' },
+        },
+        include: { emissorInfo: true },
+      })
+      expect(mockBcrypt.compare).toHaveBeenCalledWith(
+        '123456',
         'hashed-password'
       )
     })
@@ -78,17 +140,21 @@ describe('/api/auth/login', () => {
 
       const mockRequest = {
         json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
+        cookies: {},
+        nextUrl: {},
+        page: {},
+        ua: '',
+      } as any
 
       const response = await POST(mockRequest)
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toBe('Email e senha são obrigatórios')
+      expect(data.error).toBe('E-mail e senha são obrigatórios')
     })
 
     it('should return 401 for non-existent user', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null)
+      mockPrisma.user.findFirst.mockResolvedValue(null)
 
       const requestBody = {
         email: 'nonexistent@example.com',
@@ -97,7 +163,11 @@ describe('/api/auth/login', () => {
 
       const mockRequest = {
         json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
+        cookies: {},
+        nextUrl: {},
+        page: {},
+        ua: '',
+      } as any
 
       const response = await POST(mockRequest)
       const data = await response.json()
@@ -112,9 +182,11 @@ describe('/api/auth/login', () => {
         email: 'test@example.com',
         password: 'hashed-password',
         name: 'Test User',
+        role: 'RECEPTOR',
+        emailVerified: true,
       }
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser)
+      mockPrisma.user.findFirst.mockResolvedValue(mockUser)
       mockBcrypt.compare.mockResolvedValue(false)
 
       const requestBody = {
@@ -124,7 +196,11 @@ describe('/api/auth/login', () => {
 
       const mockRequest = {
         json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
+        cookies: {},
+        nextUrl: {},
+        page: {},
+        ua: '',
+      } as any
 
       const response = await POST(mockRequest)
       const data = await response.json()
@@ -133,8 +209,18 @@ describe('/api/auth/login', () => {
       expect(data.error).toBe('Credenciais inválidas')
     })
 
-    it('should return 500 on database error', async () => {
-      mockPrisma.user.findUnique.mockRejectedValue(new Error('Database error'))
+    it('should return 403 for unverified email', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        password: 'hashed-password',
+        name: 'Test User',
+        role: 'RECEPTOR',
+        emailVerified: false,
+      }
+
+      mockPrisma.user.findFirst.mockResolvedValue(mockUser)
+      mockBcrypt.compare.mockResolvedValue(true)
 
       const requestBody = {
         email: 'test@example.com',
@@ -143,7 +229,34 @@ describe('/api/auth/login', () => {
 
       const mockRequest = {
         json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
+        cookies: {},
+        nextUrl: {},
+        page: {},
+        ua: '',
+      } as any
+
+      const response = await POST(mockRequest)
+      const data = await response.json()
+
+      expect(response.status).toBe(403)
+      expect(data.error).toBe('Você precisa confirmar seu e-mail antes de fazer login. Verifique sua caixa de entrada (e spam).')
+    })
+
+    it('should return 500 on database error', async () => {
+      mockPrisma.user.findFirst.mockRejectedValue(new Error('Database error'))
+
+      const requestBody = {
+        email: 'test@example.com',
+        password: 'password123',
+      }
+
+      const mockRequest = {
+        json: vi.fn().mockResolvedValue(requestBody),
+        cookies: {},
+        nextUrl: {},
+        page: {},
+        ua: '',
+      } as any
 
       const response = await POST(mockRequest)
       const data = await response.json()
@@ -152,15 +265,17 @@ describe('/api/auth/login', () => {
       expect(data.error).toBe('Erro interno do servidor')
     })
 
-    it('should return 500 on bcrypt error', async () => {
+    it('should return 401 for invalid password', async () => {
       const mockUser = {
         id: 'user-1',
         email: 'test@example.com',
         password: 'hashed-password',
         name: 'Test User',
+        role: 'RECEPTOR',
+        emailVerified: true,
       }
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser)
+      mockPrisma.user.findFirst.mockResolvedValue(mockUser)
       mockBcrypt.compare.mockRejectedValue(new Error('Bcrypt error'))
 
       const requestBody = {
@@ -170,7 +285,11 @@ describe('/api/auth/login', () => {
 
       const mockRequest = {
         json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
+        cookies: {},
+        nextUrl: {},
+        page: {},
+        ua: '',
+      } as any
 
       const response = await POST(mockRequest)
       const data = await response.json()

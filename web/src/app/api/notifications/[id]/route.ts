@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, NotificationStatus } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { NotificationStatus } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 // PATCH /api/notifications/:id - Atualizar status da notificação
 export async function PATCH(

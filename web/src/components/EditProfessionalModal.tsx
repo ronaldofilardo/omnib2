@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
@@ -75,13 +75,24 @@ export function EditProfessionalModal({
         if (Array.isArray(specialties) && specialties.length > 0) {
           setLocalSpecialties(specialties)
         } else {
-          // Busca do backend
-          const response = await fetch('/api/professionals?type=specialties')
-          if (response.ok) {
-            let data = await response.json()
-            if (!Array.isArray(data)) data = []
-            setLocalSpecialties(data)
-          }
+          // Busca do backend com cache global
+          const { globalCache } = await import('../lib/globalCache')
+          
+          const data = await globalCache.fetchWithDeduplication<string[]>(
+            'professionals_specialties',
+            async () => {
+              const response = await fetch('/api/professionals?type=specialties')
+              if (!response.ok) throw new Error('Failed to fetch specialties')
+              const result = await response.json()
+              return Array.isArray(result) ? result : []
+            },
+            {
+              staleTime: 10 * 60 * 1000, // 10 minutes
+              cacheTime: 30 * 60 * 1000  // 30 minutes
+            }
+          )
+          
+          setLocalSpecialties(data)
         }
       } catch (error) {
         console.error('Erro ao buscar especialidades:', error)
@@ -154,15 +165,11 @@ export function EditProfessionalModal({
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-[480px] p-0 gap-0 bg-white border-0 shadow-xl">
-          {/* Descrição e título ocultos para acessibilidade */}
-          <VisuallyHidden>
-            <DialogDescription />
-          </VisuallyHidden>
-          <div className="pt-8 px-10">
-            <DialogTitle className="text-[#1F2937] text-center m-0 text-lg leading-none font-semibold">
-              Editar Profissional
-            </DialogTitle>
-          </div>
+          <DialogHeader className="pt-8 px-10">
+            <DialogTitle className="sr-only">Editar Profissional</DialogTitle>
+            <DialogDescription className="sr-only">Editar informações do profissional</DialogDescription>
+          </DialogHeader>
+          <div className="text-[#1F2937] text-center m-0 text-lg leading-none font-semibold mb-4">Editar Profissional</div>
           <div className="px-10 pt-6 pb-8">
             <div className="flex flex-col gap-5">
               <div className="space-y-2">

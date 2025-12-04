@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from './ui/dialog'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
 import { Button } from './ui/button'
@@ -52,12 +52,23 @@ export function AddProfessionalModal({
   useEffect(() => {
     const fetchSpecialties = async () => {
       try {
-        const response = await fetch('/api/professionals?type=specialties')
-        if (response.ok) {
-          let data = await response.json()
-          if (!Array.isArray(data)) data = []
-          setSpecialties(data)
-        }
+        const { globalCache } = await import('../lib/globalCache')
+        
+        const data = await globalCache.fetchWithDeduplication<string[]>(
+          'professionals_specialties',
+          async () => {
+            const response = await fetch('/api/professionals?type=specialties')
+            if (!response.ok) throw new Error('Failed to fetch specialties')
+            const result = await response.json()
+            return Array.isArray(result) ? result : []
+          },
+          {
+            staleTime: 10 * 60 * 1000, // 10 minutes - specialties don't change often
+            cacheTime: 30 * 60 * 1000  // 30 minutes
+          }
+        )
+        
+        setSpecialties(data)
       } catch (error) {
         console.error('Erro ao buscar especialidades:', error)
         setSpecialties([])
@@ -125,14 +136,11 @@ export function AddProfessionalModal({
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-[480px] p-0 gap-0 bg-white border-0 shadow-xl" data-testid="add-professional-modal">
-          {/* Descrição oculta para acessibilidade */}
-          <VisuallyHidden>
-            <DialogDescription />
-          </VisuallyHidden>
-          <VisuallyHidden>
-            <DialogTitle>Adicionar Novo Profissional</DialogTitle>
-          </VisuallyHidden>
-          {/* Header */}
+          <DialogHeader>
+            <DialogTitle className="sr-only">Adicionar Novo Profissional</DialogTitle>
+            <DialogDescription className="sr-only">Formulário para adicionar um novo profissional</DialogDescription>
+          </DialogHeader>
+          {/* Header visual */}
           <div className="pt-8 px-10">
             <h2 className="text-[#1F2937] text-center m-0">
               Adicionar Novo Profissional

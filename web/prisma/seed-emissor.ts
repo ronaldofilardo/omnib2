@@ -20,6 +20,7 @@ async function main() {
           password: hashedPassword,
           name: 'Laboratório Omni',
           role: 'EMISSOR',
+          emailVerified: new Date(), // Emissor padrão não precisa verificar e-mail
           // Usuários emissores não precisam de CPF, apenas CNPJ no EmissorInfo
           emissorInfo: {
             create: {
@@ -34,7 +35,12 @@ async function main() {
 
       console.log('✅ Usuário emissor criado com sucesso:', emissor.email)
     } else {
-      console.log('ℹ️ Usuário emissor já existe:', emissorEmail)
+      // Atualizar usuário existente para garantir emailVerified
+      await prisma.user.update({
+        where: { email: emissorEmail },
+        data: { emailVerified: new Date() }
+      })
+      console.log('ℹ️ Usuário emissor já existe e foi atualizado:', emissorEmail)
     }
 
     console.log('🚀 Seed concluído com sucesso!')

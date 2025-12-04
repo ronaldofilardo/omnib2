@@ -7,6 +7,7 @@ import {
 } from './ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Button } from './ui/button'
+import { formatTime } from '../lib/utils'
 
 interface Event {
   id: string
@@ -122,7 +123,7 @@ export function ViewEventModal({
                 Horários
               </label>
               <p className="text-[#6B7280]">
-                {event.startTime} - {event.endTime}
+                {event.startTime && event.endTime ? `${formatTime(event.startTime)} - ${formatTime(event.endTime)}` : 'Horário não definido'}
               </p>
             </div>
             {event.observation && (

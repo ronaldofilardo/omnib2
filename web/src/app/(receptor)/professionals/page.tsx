@@ -21,7 +21,6 @@ export default async function ProfessionalsPage() {
   const user = await auth();
   if (!user) redirect('/login');
   if (user.email === 'labor@omni.com' || user.role === 'EMISSOR') redirect('/laudos');
-  const professionals = await getProfessionals(user.id);
-  // setProfessionals será criado no componente, pois é um useState
-  return <ProfessionalsTab professionals={professionals} setProfessionals={() => {}} userId={user.id} />;
+  // O componente ProfessionalsTab gerencia seus próprios profissionais via contexto
+  return <ProfessionalsTab userId={user.id} />;
 }

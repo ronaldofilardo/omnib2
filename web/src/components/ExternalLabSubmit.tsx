@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
+import { calculateFileHash, formatHashForDisplay } from '@/lib/utils/fileHash';
 
 type ExternalLabSubmitProps = {
   fetchImpl?: typeof fetch;
@@ -11,17 +12,29 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
   const [doctorName, setDoctorName] = useState('');
   const [examDate, setExamDate] = useState('');
   const [documento, setDocumento] = useState('');
+  const [pacienteId, setPacienteId] = useState('');
   const [cpf, setCpf] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [fileHash, setFileHash] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resetPending, setResetPending] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
+      
+      // Calcular hash SHA-256 do arquivo
+      try {
+        const hash = await calculateFileHash(selectedFile);
+        setFileHash(hash);
+      } catch (error) {
+        console.error('Erro ao calcular hash:', error);
+        setFileHash('');
+      }
     }
   };
 
@@ -57,6 +70,7 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
             doctorName,
             examDate,
             documento,
+            pacienteId,
             cpf: cpf.replace(/\D/g, ''), // Enviar apenas dígitos
             report: {
               fileName: file ? file.name : '',
@@ -77,7 +91,14 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
           } else {
             const data = await res.json();
             setSuccess(null);
-            setError(data.error ? `Erro: ${data.error}` : 'Erro ao enviar documento.');
+            // Mensagens amigáveis
+            if (data.error?.includes('CPF')) {
+              setError('Erro: Não encontramos nenhum usuário com o CPF informado. Verifique se o CPF está correto ou cadastrado no sistema.');
+            } else if (data.error?.includes('exame')) {
+              setError('Erro: Já existe um documento cadastrado com este número de exame. Por favor, utilize outro número.');
+            } else {
+              setError(data.error ? `Erro: ${data.error}` : 'Erro ao enviar documento.');
+            }
           }
         } catch (e) {
           setSuccess(null);
@@ -107,8 +128,10 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
   setDoctorName('');
   setExamDate('');
   setDocumento('');
+  setPacienteId('');
   setCpf('');
   setFile(null);
+  setFileHash('');
   setResetPending(false);
   // Não limpar success aqui, para manter a mensagem visível
     }
@@ -128,24 +151,17 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
       onSubmit={handleSubmit}
       className="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl border border-gray-200 p-8 flex flex-col gap-4"
     >
-      <h2 className="text-xl font-bold text-center text-[#1E40AF] mb-1">Portal de Envio Externo</h2>
-      <p className="text-center text-gray-500 mb-4">Omni Saúde - Envio de Documentos para Exames</p>
+      <h2 className="text-xl font-bold text-center text-[#10B981] mb-1">Simulador Envio Automatizado de Laudo</h2>
+      <p className="text-center text-black mb-4">Simulador de API</p>
       {error && (
         <div className="text-red-600 mt-2 text-center font-medium" data-testid="error-message">
           {error}
         </div>
       )}
-      <div className="grid grid-cols-3 gap-x-6 gap-y-4 items-center">
-        {/* Coluna 1: Labels à esquerda */}
-        <div className="flex flex-col gap-6 col-span-1 text-right pr-2">
-          <label className="text-sm text-gray-700 font-medium mt-2">n. exame</label>
-          <label className="text-sm text-gray-700 font-medium mt-2">medico solicitante</label>
-          <label className="text-sm text-gray-700 font-medium mt-2">email</label>
-          <label className="text-sm text-gray-700 font-medium mt-2">cpf</label>
-          <label className="text-sm text-gray-700 font-medium mt-2">arquivo</label>
-        </div>
-        {/* Coluna 2: Inputs principais */}
-        <div className="flex flex-col gap-4 col-span-1">
+      <div className="flex flex-col gap-4">
+        {/* Campo n. exame */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-gray-700 font-medium text-right">n. exame</label>
           <input
             type="text"
             placeholder="Número do Documento"
@@ -153,6 +169,23 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
             onChange={e => setDocumento(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]"
           />
+        </div>
+
+        {/* Campo paciente ID */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-gray-700 font-medium text-right">paciente ID</label>
+          <input
+            type="text"
+            placeholder="Código do Paciente"
+            value={pacienteId}
+            onChange={e => setPacienteId(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+          />
+        </div>
+
+        {/* Campo médico solicitante */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-gray-700 font-medium text-right">médico solicitante</label>
           <input
             type="text"
             placeholder="Médico Solicitante"
@@ -160,6 +193,23 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
             onChange={e => setDoctorName(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]"
           />
+        </div>
+
+        {/* Campo data */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-gray-700 font-medium text-right">data</label>
+          <input
+            type="date"
+            placeholder="dd/mm/aaaa"
+            value={examDate}
+            onChange={e => setExamDate(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+          />
+        </div>
+
+        {/* Campo email */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-gray-700 font-medium text-right">email</label>
           <input
             type="email"
             placeholder="E-mail do Paciente"
@@ -168,6 +218,11 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
             className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]"
             data-testid="email-input"
           />
+        </div>
+
+        {/* Campo cpf */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-gray-700 font-medium text-right">cpf</label>
           <input
             type="text"
             placeholder="000.000.000-00"
@@ -182,9 +237,14 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
             }}
             className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]"
           />
+        </div>
+
+        {/* Campo arquivo */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-gray-700 font-medium text-right">arquivo</label>
           <div className="border border-dashed border-[#10B981] rounded-lg p-4 text-center bg-gray-50">
-            <label htmlFor="file-upload" className="cursor-pointer text-[#10B981] font-semibold block">
-              {file ? `Arquivo selecionado: ${file.name}` : 'Clique para selecionar Laudo/Resultado'}
+            <label htmlFor="file-upload" className="cursor-pointer text-[#10B981] font-semibold block whitespace-pre-line">
+              {file ? `Arquivo selecionado: ${file.name}` : 'Clique para\nselecionar Laudo/\nResultado'}
             </label>
             <input
               id="file-upload"
@@ -195,20 +255,13 @@ export default function ExternalLabSubmit({ fetchImpl, FileReaderImpl }: Externa
               onChange={handleFileChange}
             />
           </div>
-        </div>
-        {/* Coluna 3: Data e CPF (CPF pode ser adicionado depois se necessário) */}
-        <div className="flex flex-col gap-4 col-span-1">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-gray-700 font-medium">data</label>
-            <input
-              type="date"
-              placeholder="dd/mm/aaaa"
-              value={examDate}
-              onChange={e => setExamDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]"
-            />
-          </div>
-          {/* Espaço para CPF se necessário no futuro */}
+          {fileHash && (
+            <div className="text-xs text-gray-600 mt-1 p-2 bg-gray-50 rounded border border-gray-200">
+              <span className="font-semibold">Hash SHA-256:</span>
+              <br />
+              <span className="font-mono break-all">{fileHash}</span>
+            </div>
+          )}
         </div>
       </div>
       <button

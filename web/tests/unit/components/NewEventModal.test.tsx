@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import NewEventModal from '../../../src/components/NewEventModal'
+import { EventsProvider } from '../../../src/contexts/EventsContext'
 
 // Mock dos componentes
 vi.mock('../AddProfessionalModal', () => ({
@@ -74,19 +75,23 @@ describe('NewEventModal', () => {
 
   const renderModal = (open = true) => {
     return render(
-      <NewEventModal
-        open={open}
-        onOpenChange={mockOnOpenChange}
-        professionals={mockProfessionals}
-        setProfessionals={mockSetProfessionals}
-      />
+      <EventsProvider userId="test-user-id">
+        <NewEventModal
+          open={open}
+          onOpenChange={mockOnOpenChange}
+          professionals={mockProfessionals}
+          setProfessionals={mockSetProfessionals}
+          userId="test-user-id"
+        />
+      </EventsProvider>
     )
   }
 
   it('renders modal when open is true', async () => {
     renderModal(true)
 
-    expect(screen.getByText('Novo Evento')).toBeInTheDocument()
+    // Pode haver múltiplos elementos com o texto 'Novo Evento' (título e conteúdo)
+    expect(screen.getAllByText('Novo Evento').length).toBeGreaterThan(0)
     // Aguarda o EventForm Mock aparecer
     await waitFor(() => {
       expect(

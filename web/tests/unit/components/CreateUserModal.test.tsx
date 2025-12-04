@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { CreateUserModal } from '@/components/CreateUserModal';
-import { vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { CreateUserModal } from '../../../src/components/CreateUserModal';
 
 describe('CreateUserModal', () => {
   const mockOnOpenChange = vi.fn();
@@ -71,12 +71,19 @@ describe('CreateUserModal', () => {
     render(<CreateUserModal {...defaultProps} />);
     const passwordInput = screen.getByPlaceholderText('••••••••');
     // Busca todos os botões e filtra pelo que contém um SVG de olho (lucide-eye)
-    const buttons = screen.getAllByRole('button');
-    const toggleButton = buttons.find((btn) => {
-      const svg = btn.querySelector('svg');
-      return svg && svg.className.baseVal.includes('eye');
-    });
-    expect(toggleButton).toBeDefined();
+    // Busca botão pelo aria-label ou data-testid se disponível, senão pelo SVG
+    let toggleButton = screen.queryByLabelText(/mostrar senha|alternar senha|toggle password/i) || null;
+    if (!toggleButton) {
+      const buttons = screen.getAllByRole('button');
+      toggleButton = buttons.find((btn) => {
+        const svg = btn.querySelector('svg');
+        if (!svg) return false;
+        // Tenta className.baseVal (SVG) ou className (string)
+        const className = typeof svg.className === 'object' && 'baseVal' in svg.className ? svg.className.baseVal : svg.className;
+        return className && className.toString().includes('eye');
+      }) || null;
+    }
+    expect(toggleButton).not.toBeNull();
     expect(passwordInput).toHaveAttribute('type', 'password');
     fireEvent.click(toggleButton!);
     expect(passwordInput).toHaveAttribute('type', 'text');
@@ -88,11 +95,7 @@ describe('CreateUserModal', () => {
     render(<CreateUserModal {...defaultProps} />);
 
     const createButton = screen.getByText('Criar Usuário');
-    fireEvent.click(createButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('E-mail, senha e CPF são obrigatórios')).toBeInTheDocument();
-    });
+    expect(createButton).toBeDisabled();
   });
 
   it('shows error when CPF has less than 11 digits', async () => {
@@ -106,34 +109,45 @@ describe('CreateUserModal', () => {
     fireEvent.change(emailInput, { target: { value: 'joao@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
     fireEvent.change(cpfInput, { target: { value: '123456789' } }); // 9 digits
-    fireEvent.click(createButton);
+    expect(createButton).toBeDisabled();
+  });
 
-    await waitFor(() => {
-      expect(screen.getByText('CPF deve ter 11 dígitos')).toBeInTheDocument();
-    });
+  it('shows error when terms are not accepted', async () => {
+    render(<CreateUserModal {...defaultProps} />);
+
+    const emailInput = screen.getByPlaceholderText('user@email.com');
+    const passwordInput = screen.getByPlaceholderText('••••••••');
+    const cpfInput = screen.getByPlaceholderText('CPF *');
+    const createButton = screen.getByText('Criar Usuário');
+
+    fireEvent.change(emailInput, { target: { value: 'joao@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.change(cpfInput, { target: { value: '12345678901' } });
+    expect(createButton).toBeDisabled();
   });
 
   it('creates user successfully', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    // Mock da resposta da API
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ success: true }),
     });
 
     render(<CreateUserModal {...defaultProps} />);
 
-    const fullNameInput = screen.getByPlaceholderText('Nome completo');
-    const cpfInput = screen.getByPlaceholderText('CPF *');
-    const emailInput = screen.getByPlaceholderText('user@email.com');
-    const passwordInput = screen.getByPlaceholderText('••••••••');
-    const createButton = screen.getByText('Criar Usuário');
+    // Preenche o formulário
+    fireEvent.change(screen.getByPlaceholderText('Nome completo'), { target: { value: 'João Silva' } });
+    fireEvent.change(screen.getByPlaceholderText('CPF *'), { target: { value: '12345678901' } });
+    fireEvent.change(screen.getByPlaceholderText('Telefone'), { target: { value: '11987654321' } });
+    fireEvent.change(screen.getByPlaceholderText('user@email.com'), { target: { value: 'joao@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /Política de Privacidade/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Termos de Uso/i }));
 
-    fireEvent.change(fullNameInput, { target: { value: 'João Silva' } });
-    fireEvent.change(cpfInput, { target: { value: '12345678901' } });
-    fireEvent.change(emailInput, { target: { value: 'joao@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    // Submete o formulário
+    fireEvent.click(screen.getByText('Criar Usuário'));
 
-    fireEvent.click(createButton);
-
+    // Aguarda as asserções
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/auth/register', {
         method: 'POST',
@@ -142,37 +156,45 @@ describe('CreateUserModal', () => {
           email: 'joao@example.com',
           password: 'password123',
           name: 'João Silva',
-          cpf: '123.456.789-01', // agora espera formatado
-          telefone: '',
+          cpf: '123.456.789-01',
+          telefone: '(11) 98765-4321',
+          acceptedPrivacyPolicy: true,
+          acceptedTermsOfUse: true,
         }),
       });
       expect(mockOnRegistered).toHaveBeenCalledWith({
         email: 'joao@example.com',
         name: 'João Silva',
       });
-      expect(mockOnOpenChange).toHaveBeenCalledWith(false);
     });
+
+    await waitFor(() => {
+      expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+    }, { timeout: 3000 });
   });
 
   it('handles registration error', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    // Mock da resposta de erro da API
+    global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       json: () => Promise.resolve({ error: 'Email já existe' }),
     });
 
     render(<CreateUserModal {...defaultProps} />);
 
-    const cpfInput = screen.getByPlaceholderText('CPF *');
-    const emailInput = screen.getByPlaceholderText('user@email.com');
-    const passwordInput = screen.getByPlaceholderText('••••••••');
-    const createButton = screen.getByText('Criar Usuário');
+    // Preenche o formulário
+    fireEvent.change(screen.getByPlaceholderText('Nome completo'), { target: { value: 'João Silva' } });
+    fireEvent.change(screen.getByPlaceholderText('CPF *'), { target: { value: '12345678901' } });
+    fireEvent.change(screen.getByPlaceholderText('Telefone'), { target: { value: '11987654321' } });
+    fireEvent.change(screen.getByPlaceholderText('user@email.com'), { target: { value: 'joao@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /Política de Privacidade/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Termos de Uso/i }));
 
-    fireEvent.change(cpfInput, { target: { value: '12345678901' } });
-    fireEvent.change(emailInput, { target: { value: 'joao@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    // Submete o formulário
+    fireEvent.click(screen.getByText('Criar Usuário'));
 
-    fireEvent.click(createButton);
-
+    // Aguarda a mensagem de erro
     await waitFor(() => {
       expect(screen.getByText('Email já existe')).toBeInTheDocument();
     });

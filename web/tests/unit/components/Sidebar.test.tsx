@@ -85,7 +85,7 @@ describe('Sidebar', () => {
       .getByText('Profissionais')
       .closest('button')
     expect(professionalsButton).toHaveClass(
-      'text-[#374151]',
+      'text-black',
       'hover:bg-gray-50'
     )
     expect(professionalsButton).not.toHaveClass('bg-[#10B981]')

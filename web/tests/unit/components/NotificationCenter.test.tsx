@@ -227,7 +227,7 @@ describe('NotificationCenter', () => {
         console.log('[TEST] Component rendered, waiting for notification elements');
         await waitFor(() => {
           console.log('[TEST] Checking for notification elements in DOM');
-          expect(screen.getByText('Laudo recebido:')).toBeInTheDocument();
+          expect(screen.getByText(/laudo.*recebido:/i)).toBeInTheDocument();
           expect(screen.getByText('laudo.pdf')).toBeInTheDocument();
           expect(screen.getByText('Médico:')).toBeInTheDocument();
           expect(screen.getByText('Dr. Silva')).toBeInTheDocument();

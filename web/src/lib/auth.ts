@@ -4,7 +4,7 @@ export interface User {
   id: string;
   email?: string;
   name?: string | null;
-  role: 'EMISSOR' | 'RECEPTOR';
+  role: 'EMISSOR' | 'RECEPTOR' | 'ADMIN';
 }
 
 export async function auth(): Promise<User | null> {
@@ -16,7 +16,7 @@ export async function auth(): Promise<User | null> {
   if (!id || !role) return null;
   return {
     id,
-    role: role as 'EMISSOR' | 'RECEPTOR',
+    role: role as 'EMISSOR' | 'RECEPTOR' | 'ADMIN',
   };
 }
 
@@ -28,4 +28,9 @@ export async function isEmissor(user: User | null): Promise<boolean> {
 export async function isReceptor(user: User | null): Promise<boolean> {
   if (!user) return false;
   return user.role === 'RECEPTOR';
+}
+
+export async function isAdmin(user: User | null): Promise<boolean> {
+  if (!user) return false;
+  return user.role === 'ADMIN';
 }

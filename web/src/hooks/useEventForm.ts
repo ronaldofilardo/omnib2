@@ -5,7 +5,8 @@ import {
   validateEndTime,
   ValidationResult,
 } from '@/lib/validators/eventValidators'
-import { EventType } from '@prisma/client'
+import { EventType } from '../components/EventForm'
+import { HealthEvent } from '../contexts/EventsContext'
 
 // Interfaces
 interface Professional {
@@ -14,18 +15,14 @@ interface Professional {
   specialty: string
 }
 
-interface Event {
-  id: string
-  professionalId: string
-  date: string
-  startTime: string
-  endTime: string
-}
+type Event = HealthEvent
 
 interface UseEventFormProps {
   professionals: Professional[]
   onFormSubmitSuccess: () => void
   userId: string
+  events?: Event[]
+  createEventOptimistic?: (eventData: Omit<Event, 'id'>) => Promise<void>
 }
 
 interface FormState {
@@ -58,18 +55,25 @@ const INITIAL_STATE: FormState = {
 
 // Hook principal
 export function useEventForm(props: UseEventFormProps) {
-  const { professionals, onFormSubmitSuccess, userId } = props
+  const { professionals, onFormSubmitSuccess, userId, events: externalEvents, createEventOptimistic } = props
   const [state, setState] = useState<FormState>(INITIAL_STATE)
   const [errors, setErrors] = useState<FormErrors>({})
   const [events, setEvents] = useState<Event[]>([])
 
   // Busca eventos existentes para validação de sobreposição
   const fetchEvents = useCallback(() => {
-    fetch(`/api/events?userId=${encodeURIComponent(userId)}`)
-      .then((res) => res.json())
-      .then((data) => setEvents(Array.isArray(data) ? data : []))
-      .catch(() => setEvents([]))
-  }, [userId])
+    if (externalEvents) {
+      setEvents(externalEvents)
+    } else {
+      fetch(`/api/events?userId=${encodeURIComponent(userId)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const eventsData = Array.isArray(data) ? data : data.events || [];
+          setEvents(eventsData);
+        })
+        .catch(() => setEvents([]))
+    }
+  }, [userId, externalEvents])
 
   useEffect(() => {
     fetchEvents()
@@ -169,31 +173,41 @@ export function useEventForm(props: UseEventFormProps) {
 
     // Submissão para a API
     try {
-      const response = await fetch(`/api/events?userId=${encodeURIComponent(userId)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: state.eventType,
-          description: state.observation,
-          date: state.date,
-          type: state.eventType,
-          startTime: state.startTime,
-          endTime: state.endTime,
-          professionalId: state.selectedProfessional,
-          files: [],
-        }),
-      })
+      const eventData = {
+        title: state.eventType,
+        description: state.observation,
+        date: state.date,
+        type: state.eventType,
+        startTime: state.startTime,
+        endTime: state.endTime,
+        professionalId: state.selectedProfessional,
+        observation: state.observation,
+        instructions: false,
+      }
 
-      if (!response.ok) {
-        let errorMsg = 'Falha na comunicação com o servidor. Tente novamente.'
-        try {
-          const errorData = await response.json()
-          if (errorData && errorData.error) {
-            errorMsg = errorData.error
-          }
-        } catch {}
-        setErrors({ overlap: errorMsg })
-        return
+      if (createEventOptimistic) {
+        await createEventOptimistic(eventData)
+      } else {
+        const response = await fetch(`/api/events?userId=${encodeURIComponent(userId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...eventData,
+            files: [],
+          }),
+        })
+
+        if (!response.ok) {
+          let errorMsg = 'Falha na comunicação com o servidor. Tente novamente.'
+          try {
+            const errorData = await response.json()
+            if (errorData && errorData.error) {
+              errorMsg = errorData.error
+            }
+          } catch {}
+          setErrors({ overlap: errorMsg })
+          return
+        }
       }
 
       // Sucesso

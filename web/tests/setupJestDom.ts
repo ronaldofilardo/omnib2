@@ -1,5 +1,10 @@
-// setupJestDom.ts - Setup dedicado para jest-dom
-import '@testing-library/jest-dom/vitest';
+/**
+ * Setup específico para jest-dom matchers
+ * Configuração isolada para testing-library matchers
+ */
+import '@testing-library/jest-dom'
+import { expect } from 'vitest'
+import * as matchers from '@testing-library/jest-dom/matchers'
 
-// Log para confirmar carregamento do jest-dom
-console.log('Jest-DOM setup loaded successfully');
+// Extend Vitest's expect with jest-dom matchers
+expect.extend(matchers)

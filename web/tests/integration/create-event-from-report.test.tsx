@@ -1,5 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
+
+// Mock do hook useEvents para evitar erro de provider
+vi.mock('@/contexts/EventsContext', () => ({
+  useEvents: () => ({
+    events: [],
+    setEvents: vi.fn(),
+    professionals: [],
+    setProfessionals: vi.fn(),
+    refreshEvents: vi.fn(),
+    refreshProfessionals: vi.fn(),
+  }),
+  EventsProvider: ({ children }: { children: React.ReactNode }) => children
+}))
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { EventsProvider } from '@/contexts/EventsContext'
 import '@testing-library/jest-dom'
 import CreateEventFromNotificationModal from '@/components/CreateEventFromNotificationModal'
 import { ProfessionalsTab } from '@/components/ProfessionalsTab'
@@ -120,15 +134,17 @@ describe('Fluxo de Criação de Evento via Laudo (Integração)', () => {
 
     // 1. Renderizar e interagir com o modal
     const { rerender } = render(
-      <CreateEventFromNotificationModal
-        open={true}
-        onClose={() => {}}
-        onSuccess={onSuccess}
-        notification={mockNotification}
-        userId={mockUserId}
-        refreshProfessionals={refreshProfessionals}
-        professionalId=""
-      />
+      <EventsProvider userId={mockUserId}>
+        <CreateEventFromNotificationModal
+          open={true}
+          onClose={() => {}}
+          onSuccess={onSuccess}
+          notification={mockNotification}
+          userId={mockUserId}
+          refreshProfessionals={refreshProfessionals}
+          professionalId=""
+        />
+      </EventsProvider>
     )
 
     // Clicar no botão de criar
@@ -156,18 +172,24 @@ describe('Fluxo de Criação de Evento via Laudo (Integração)', () => {
     })
 
     render(
-      <ProfessionalsTab
-        professionals={[{
-          id: mockProfessionalId,
-          name: mockDoctorName,
-          specialty: 'A ser definido'
-        }]}
-        setProfessionals={() => {}}
-        userId={mockUserId}
-      />
+      <EventsProvider userId={mockUserId}>
+        <ProfessionalsTab
+          professionals={[{
+            id: mockProfessionalId,
+            name: mockDoctorName,
+            specialty: 'A ser definido'
+          }]}
+          setProfessionals={() => {}}
+          userId={mockUserId}
+        />
+      </EventsProvider>
     )
 
-    expect(screen.getByText(mockDoctorName)).toBeInTheDocument()
+    // Buscar o nome do profissional em qualquer lugar do DOM (incluindo <option>)
+    const found = screen.queryAllByText((content, element) => {
+      return content.includes(mockDoctorName)
+    })
+    expect(found.length).toBeGreaterThan(0)
 
     // 3. Verificar se o nome aparece no card da timeline
     mockFetch.mockResolvedValueOnce({

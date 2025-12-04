@@ -1,8 +1,91 @@
 "use client";
-import { Eye, FileText, Edit, Trash2, UploadCloud, Copy } from 'lucide-react'
-import React, { useState } from 'react'
+import { Eye, FileText, Edit, Trash2, UploadCloud, Copy, Share2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { DeleteEventModal } from './DeleteEventModal'
+import { ShareModal } from './ShareModal'
+import { formatTime } from '../lib/utils'
+
+// Função para garantir formato YYYY-MM-DD
+function formatDateForAPI(date: string | Date | undefined): string {
+  if (!date) return ''
+
+  let dateString: string
+
+  // Se é um Date object, converte para YYYY-MM-DD
+  if (date instanceof Date) {
+    const year = date.getFullYear()
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const day = date.getDate().toString().padStart(2, '0')
+    dateString = `${year}-${month}-${day}`
+  }
+  // Se é uma string ISO (contém T), extrai a parte da data
+  else if (typeof date === 'string' && date.includes('T')) {
+    dateString = date.split('T')[0]
+  }
+  // Se já está no formato YYYY-MM-DD, retorna como está
+  else if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    dateString = date
+  }
+  // Tenta fazer o parse como último recurso
+  else {
+    try {
+      const parsed = new Date(date)
+      if (!isNaN(parsed.getTime())) {
+        const year = parsed.getFullYear()
+        const month = (parsed.getMonth() + 1).toString().padStart(2, '0')
+        const day = parsed.getDate().toString().padStart(2, '0')
+        dateString = `${year}-${month}-${day}`
+      } else {
+        return ''
+      }
+    } catch {
+      return ''
+    }
+  }
+
+  return dateString
+}
+
+// Função para garantir formato HH:mm
+function formatTimeForAPI(time: string | Date | undefined): string {
+  if (!time) return ''
+
+  let timeString: string
+
+  // Se é um Date object, extrai HH:mm
+  if (time instanceof Date) {
+    const hours = time.getHours().toString().padStart(2, '0')
+    const minutes = time.getMinutes().toString().padStart(2, '0')
+    timeString = `${hours}:${minutes}`
+  }
+  // Se é uma string ISO (contém T), extrai a parte do tempo
+  else if (typeof time === 'string' && time.includes('T')) {
+    try {
+      const date = new Date(time)
+      if (isNaN(date.getTime())) {
+        return ''
+      }
+      const hours = date.getHours().toString().padStart(2, '0')
+      const minutes = date.getMinutes().toString().padStart(2, '0')
+      timeString = `${hours}:${minutes}`
+    } catch {
+      return ''
+    }
+  }
+  // Se já é uma string, usa como está
+  else {
+    timeString = time
+  }
+
+  // Se já está no formato correto, retorna como está
+  if (/^\d{2}:\d{2}$/.test(timeString)) return timeString
+  // Se está no formato H:mm, adiciona zero à esquerda
+  if (/^\d{1}:\d{2}$/.test(timeString)) return `0${timeString}`
+
+  // Se não conseguiu formatar, retorna vazio (falhará na validação)
+  return ''
+}
 
 const OutlineButton = ({
   icon,
@@ -36,7 +119,7 @@ interface FileSlot {
 
 import type { Event } from './Timeline'
 interface EventCardProps {
-  onUpdate?: () => void
+  onUpdate?: (force?: boolean) => void
   event: Event
   professional: string
   address: string
@@ -45,11 +128,13 @@ interface EventCardProps {
   onDelete?: (deleteFiles: boolean) => void
   onView?: () => void
   onFiles?: () => void
+  onShare?: () => void
 }
 
 // ...existing code...
 
 interface FileSlot {
+  id?: string // ID do arquivo no banco
   name: string
   type: string
   file: File | null
@@ -76,14 +161,11 @@ export function EventCard({
   onDelete,
   onView,
   onFiles,
+  onShare,
   onUpdate,
 }: EventCardProps) {
   const eventId = event.id
-  const initialFiles = Array.isArray(event.files)
-    ? event.files
-    : typeof event.files === 'string'
-      ? JSON.parse(event.files || '[]')
-      : [];
+  const initialFiles = event.files ?? [];
   const title =
     event.type === 'CONSULTATION'
       ? 'Consulta'
@@ -96,7 +178,7 @@ export function EventCard({
             : event.type
   const time =
     event.startTime && event.endTime
-      ? `${event.startTime} - ${event.endTime}`
+      ? `${formatTime(event.startTime)} - ${formatTime(event.endTime)}`
       : ''
   console.log('[EventCard] Event type:', event.type, 'Title:', title, 'Professional:', professional)
   console.log('[EventCard] Full title string:', `${title} - ${professional} - ${time}`)
@@ -107,18 +189,20 @@ export function EventCard({
   const [showViewModal, setShowViewModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showFilesModal, setShowFilesModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const filesMap =
-    initialFiles?.reduce(
-      (map: Record<string, { slot: string; name: string; url: string }>, file: { slot: string; name: string; url: string }) => {
+    initialFiles.reduce(
+      (map: Record<string, { id?: string; slot: string; name: string; url: string; physicalPath?: string; uploadDate?: string | null }>, file: { id?: string; slot: string; name: string; url: string; physicalPath?: string; uploadDate?: string | null }) => {
         map[file.slot] = file
         return map
       },
-      {} as Record<string, { slot: string; name: string; url: string }>
-    ) || {}
+      {} as Record<string, { id?: string; slot: string; name: string; url: string; physicalPath?: string; uploadDate?: string | null }>
+    )
   const [fileSlots, setFileSlots] = useState<FileSlot[]>(
     fileSlotTypes.map((type) => {
       const file = filesMap[type.category]
       return {
+        id: file?.id,
         name: file?.name || '',
         type: type.label,
         file: null,
@@ -128,9 +212,42 @@ export function EventCard({
       }
     })
   )
+
+  // Sincronizar fileSlots quando event.files mudar
+  useEffect(() => {
+    console.log(`[EventCard] useEffect disparado para evento ${event.id}, files:`, event.files);
+
+    const currentFiles = event.files ?? [];
+
+    const currentFilesMap = currentFiles.reduce(
+      (map: Record<string, { id?: string; slot: string; name: string; url: string; physicalPath?: string; uploadDate?: string | null }>, file: { id?: string; slot: string; name: string; url: string; physicalPath?: string; uploadDate?: string | null }) => {
+        map[file.slot] = file
+        return map
+      },
+      {} as Record<string, { id?: string; slot: string; name: string; url: string; physicalPath?: string; uploadDate?: string | null }>
+    )
+
+    const updatedSlots: FileSlot[] = fileSlotTypes.map((type) => {
+      const file = currentFilesMap[type.category]
+      return {
+        id: file?.id,
+        name: file?.name || '',
+        type: type.label,
+        file: null,
+        status: file ? 'uploaded' : 'empty', // garante tipo
+        category: type.category,
+        url: file?.url || undefined,
+      } as FileSlot
+    })
+
+    console.log(`[EventCard] Atualizando fileSlots para evento ${event.id}:`, updatedSlots);
+    setFileSlots(updatedSlots)
+  }, [event.files, event.id]) // Reagir a mudanças nos arquivos
+
   const [previewFile, setPreviewFile] = useState<{
-    file: File
+    file: File | null
     type: string
+    url?: string
   } | null>(null)
   return (
     <>
@@ -190,6 +307,15 @@ export function EventCard({
               >
                 Arquivos
               </span>
+            </OutlineButton>
+            <OutlineButton
+              icon={<Share2 className="w-4 h-4" />}
+              onClick={() => {
+                setShowShareModal(true)
+                onShare?.()
+              }}
+            >
+              Compartilhar
             </OutlineButton>
           </div>
           <div className="flex gap-2">
@@ -291,8 +417,17 @@ export function EventCard({
                             title="Visualizar"
                             onClick={() => {
                               if (slot.url) {
-                                // Abrir arquivo persistido em nova aba
-                                window.open(slot.url, '_blank')
+                                // Para URLs de dados (base64), mostrar no modal de preview
+                                if (slot.url.startsWith('data:')) {
+                                  setPreviewFile({
+                                    file: null as any, // Usar null para indicar que é URL
+                                    type: slot.type,
+                                    url: slot.url,
+                                  })
+                                } else {
+                                  // Abrir arquivo persistido em nova aba
+                                  window.open(slot.url, '_blank')
+                                }
                               } else if (slot.file) {
                                 setPreviewFile({
                                   file: slot.file,
@@ -306,16 +441,55 @@ export function EventCard({
                           </button>
                           <button
                             title="Deletar"
-                            onClick={() => {
-                              const newSlots = [...fileSlots]
-                              newSlots[index] = {
-                                ...slot,
-                                file: null,
-                                status: 'empty',
-                                name: '',
-                                url: undefined,
+                            onClick={async () => {
+                              if (!window.confirm(`Deseja realmente deletar permanentemente o arquivo '${slot.name}'? Esta ação não pode ser desfeita.`)) return;
+
+                              if (slot.id) {
+                                // Arquivo persistido com ID - fazer hard delete via API
+                                try {
+                                  console.log(`[EventCard] Deletando arquivo ID: ${slot.id}, slot: ${slot.category}`);
+                                  const res = await fetch(`/api/files/${slot.id}`, {
+                                    method: 'DELETE',
+                                  });
+
+                                  if (res.ok) {
+                                    console.log(`[EventCard] Arquivo deletado com sucesso: ${slot.name}`);
+                                    
+                                    // Atualiza lista local removendo o arquivo
+                                    const newSlots = [...fileSlots]
+                                    newSlots[index] = {
+                                      ...slot,
+                                      id: undefined,
+                                      file: null,
+                                      status: 'empty',
+                                      name: '',
+                                      url: undefined,
+                                    }
+                                    setFileSlots(newSlots)
+                                    
+                                    // NÃO fechar modal - deixar usuário ver mudanças e clicar em Concluir
+                                    // Forçar refresh será feito ao clicar em Concluir
+                                    alert('Arquivo deletado com sucesso! Clique em "Concluir" para salvar as alterações.');
+                                  } else {
+                                    const errorData = await res.json();
+                                    throw new Error(errorData.error || 'Falha ao deletar arquivo');
+                                  }
+                                } catch (err) {
+                                  console.error('[EventCard] Erro ao deletar arquivo:', err);
+                                  alert('Erro ao deletar arquivo: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
+                                }
+                              } else {
+                                // Arquivo local/pendente - apenas remover da UI
+                                const newSlots = [...fileSlots]
+                                newSlots[index] = {
+                                  ...slot,
+                                  file: null,
+                                  status: 'empty',
+                                  name: '',
+                                  url: undefined,
+                                }
+                                setFileSlots(newSlots)
                               }
-                              setFileSlots(newSlots)
                             }}
                             className="text-red-600 hover:text-red-800 bg-white border border-red-100 rounded p-1 shadow-sm"
                           >
@@ -330,12 +504,18 @@ export function EventCard({
                         <input
                           type="file"
                           className="hidden"
-                          accept="image/*,.pdf"
+                          accept="image/*"
                           onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (file) {
-                              if (file.size > 2 * 1024) {
-                                alert('O arquivo deve ter no máximo 2 KB.')
+                              // Validação de tipo de arquivo (deve ser imagem)
+                              if (!file.type.startsWith('image/')) {
+                                alert('Apenas arquivos de imagem são aceitos (PNG, JPG, JPEG, GIF, etc.)')
+                                return
+                              }
+                              // Validação de tamanho (deve ser menor que 2KB)
+                              if (file.size >= 2 * 1024) {
+                                alert('O arquivo deve ter menos de 2KB.')
                                 return
                               }
                               const newSlots = [...fileSlots]
@@ -375,6 +555,8 @@ export function EventCard({
                       slot: string
                       name: string
                       url: string
+                      physicalPath?: string
+                      uploadDate?: string
                     }[] = []
                     // Upload dos arquivos pendentes
                     for (const slot of fileSlots) {
@@ -392,6 +574,8 @@ export function EventCard({
                               slot: slot.category, // slot correto
                               name: slot.name,
                               url,
+                              physicalPath: url,
+                              uploadDate: new Date().toISOString().split('T')[0],
                             })
                             // Atualizar o slot com a URL
                             const newSlots = [...fileSlots]
@@ -403,6 +587,7 @@ export function EventCard({
                                 ...slot,
                                 status: 'uploaded',
                                 url,
+                                // Note: id will be set when event is updated
                               }
                               setFileSlots(newSlots)
                             }
@@ -421,10 +606,14 @@ export function EventCard({
                           slot: slot.category, // slot correto
                           name: slot.name,
                           url: slot.url,
+                          physicalPath: slot.url,
+                          uploadDate: new Date().toISOString().split('T')[0],
                         })
                       }
                     }
                     try {
+                      // Para atualização de arquivos, não enviar dados do evento para preservar data/horários originais
+                      console.log('[EventCard] Atualizando apenas arquivos do evento:', event.id)
                       const response = await fetch('/api/events', {
                         method: 'PUT',
                         headers: {
@@ -432,27 +621,48 @@ export function EventCard({
                         },
                         body: JSON.stringify({
                           id: event.id,
-                          title: event.title,
-                          description: event.description,
-                          date: new Date(event.date).toISOString().slice(0, 10), // Garantir formato YYYY-MM-DD
-                          type: event.type,
-                          startTime: event.startTime,
-                          endTime: event.endTime,
-                          professionalId: event.professionalId,
+                          // Não enviar title, description, date, type, startTime, endTime, professionalId
+                          // Apenas os arquivos para não modificar dados existentes do evento
                           files: filesObjects,
                         }),
                       })
                       if (response.ok) {
+                        const updatedEvent = await response.json()
+                        console.log('Evento atualizado com arquivos:', updatedEvent)
+
+                        // Atualizar slots locais com as informações corretas da resposta (IDs e URLs)
+                        if (updatedEvent.files) {
+                          const updatedSlots = fileSlotTypes.map((type) => {
+                            const file = updatedEvent.files?.find((f: any) => f.slot === type.category)
+                            return {
+                              id: file?.id,
+                              name: file?.name || '',
+                              type: type.label,
+                              file: null,
+                              status: file ? 'uploaded' : 'empty',
+                              category: type.category,
+                              url: file?.url || undefined,
+                            } as FileSlot
+                          })
+                          setFileSlots(updatedSlots)
+                        }
+
                         setShowFilesModal(false)
-                        onUpdate?.() // <-- AQUI ESTÁ A MÁGICA
+                        onUpdate?.(true) // Forçar refresh para sincronizar com banco
                       } else {
-                        console.error('Erro ao salvar arquivos')
+                        const errorText = await response.text()
+                        console.error('Erro ao salvar arquivos:', errorText)
+                        // Opcional: alertar o usuário
+                        // alert('Erro ao salvar arquivos: ' + errorText)
                       }
                     } catch (error) {
                       console.error('Erro ao salvar arquivos:', error)
                     }
                   } else {
+                    // Fechar modal e forçar refresh mesmo sem novos uploads
+                    // (pode ter havido deleções que já foram persistidas)
                     setShowFilesModal(false)
+                    onUpdate?.(true)
                   }
                 }}
               >
@@ -476,20 +686,44 @@ export function EventCard({
                 ×
               </button>
             </div>
-            {previewFile.file.type.startsWith('image/') ? (
-              <Image
-                src={URL.createObjectURL(previewFile.file)}
-                alt={previewFile.file.name}
-                className="max-h-[600px] object-contain"
-                width={800}
-                height={600}
-              />
-            ) : (
-              <div className="text-center py-8">
-                <FileText className="w-16 h-16 mx-auto text-gray-400" />
-                <p className="mt-2">Arquivo PDF: {previewFile.file.name}</p>
-              </div>
-            )}
+            {previewFile.url ? (
+              // Para URLs de dados (base64)
+              previewFile.url.startsWith('data:image/') ? (
+                <img
+                  src={previewFile.url}
+                  alt={previewFile.type}
+                  className="max-h-[600px] object-contain"
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="w-16 h-16 mx-auto text-gray-400" />
+                  <p className="mt-2">Arquivo: {previewFile.type}</p>
+                  <a
+                    href={previewFile.url}
+                    download
+                    className="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Baixar Arquivo
+                  </a>
+                </div>
+              )
+            ) : previewFile.file ? (
+              // Para arquivos locais
+              previewFile.file.type.startsWith('image/') ? (
+                <Image
+                  src={URL.createObjectURL(previewFile.file)}
+                  alt={previewFile.file.name}
+                  className="max-h-[600px] object-contain"
+                  width={800}
+                  height={600}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="w-16 h-16 mx-auto text-gray-400" />
+                  <p className="mt-2">Arquivo PDF: {previewFile.file.name}</p>
+                </div>
+              )
+            ) : null}
             <div className="mt-4 text-center">
               <button
                 className="px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition-colors"
@@ -501,6 +735,13 @@ export function EventCard({
           </div>
         </div>
       )}
+
+      {/* Modal de Compartilhamento */}
+      <ShareModal
+        open={showShareModal}
+        onOpenChange={setShowShareModal}
+        event={event}
+      />
     </>
   )
 }

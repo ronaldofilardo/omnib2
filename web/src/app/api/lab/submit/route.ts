@@ -1,25 +1,53 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, NotificationType, NotificationStatus } from '@prisma/client';
+/**
+ * API para Recebimento de Laudos de Laboratórios Externos
+ * 
+ * Esta API permite que laboratórios enviem laudos médicos para pacientes cadastrados
+ * no sistema Omni Saúde. Os laudos são processados e geram notificações automáticas.
+ * 
+ * Documentação completa: /docs/API_DOCUMENTACAO.md
+ * 
+ * Exemplo de uso:
+ * POST /api/lab/submit
+ * {
+ *   "patientEmail": "paciente@email.com",
+ *   "doctorName": "Dr. João Silva",
+ *   "examDate": "2024-11-17",
+ *   "documento": "LAB-12345",
+ *   "cpf": "12345678901",
+ *   "report": {
+ *     "fileName": "laudo.pdf",
+ *     "fileContent": "base64_encoded_content"
+ *   }
+ * }
+ */
 
-const prisma = new PrismaClient();
+import { NextRequest, NextResponse } from 'next/server';
+import { NotificationType, NotificationStatus } from '@prisma/client';
+import { logDocumentSubmission } from '@/lib/services/auditService';
+import { calculateFileHashFromBase64 } from '@/lib/utils/fileHashServer';
+import { prisma } from '@/lib/prisma';
+
 
 // Simples rate limit in-memory (MVP, troque por Redis/Edge em produção)
 export const rateLimitMap = new Map<string, { count: number; last: number }>();
 const RATE_LIMIT = 10; // máx. 10 requisições por IP por hora
 const PAYLOAD_SIZE_LIMIT = 2 * 1024; // 2KB
+const RATE_LIMIT_DISABLED = process.env.RATE_LIMIT_DISABLED === '1';
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
-  const now = Date.now();
-  const rate = rateLimitMap.get(ip) || { count: 0, last: now };
-  if (now - rate.last > 60 * 60 * 1000) {
-    rate.count = 0;
-    rate.last = now;
-  }
-  rate.count++;
-  rateLimitMap.set(ip, rate);
-  if (rate.count > RATE_LIMIT) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  if (!RATE_LIMIT_DISABLED) {
+    const now = Date.now();
+    const rate = rateLimitMap.get(ip) || { count: 0, last: now };
+    if (now - rate.last > 60 * 60 * 1000) {
+      rate.count = 0;
+      rate.last = now;
+    }
+    rate.count++;
+    rateLimitMap.set(ip, rate);
+    if (rate.count > RATE_LIMIT) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
   }
 
   let body: any;
@@ -30,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Validação básica do payload
-  const { patientEmail, doctorName, examDate, report, documento, cpf, cnpj } = body;
+  const { patientEmail, doctorName, examDate, report, documento, pacienteId, cpf, cnpj } = body;
   if (!patientEmail || !doctorName || !examDate || !report || !documento) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
@@ -62,30 +90,21 @@ export async function POST(req: NextRequest) {
     console.log('=== DEBUG: Busca de usuário por CPF/CNPJ ===');
     
     let user;
-    
+    let cpfClean = '';
     if (cpf) {
       // Busca por CPF (usuário receptor)
       console.log('CPF recebido:', cpf);
-      const cpfClean = cpf.replace(/\D/g, '');
+      cpfClean = cpf.replace(/\D/g, '');
       console.log('CPF limpo:', cpfClean);
 
-      // SOLUÇÃO: Buscar por todos os formatos possíveis do CPF
-      const cpfFormats = [
-        cpf,                    // Como enviado
-        cpfClean,              // Apenas números
-        cpfClean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'), // Formato brasileiro
-        cpfClean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')  // Mesmo formato
-      ];
-
+      // Busca direta por CPF normalizado (apenas dígitos)
       user = await prisma.user.findFirst({
         where: {
-          cpf: {
-            in: cpfFormats
-          }
+          cpf: cpfClean
         }
       });
 
-      console.log('Formatos de CPF testados:', cpfFormats);
+      console.log('CPF normalizado usado na busca:', cpfClean);
     } else if (cnpj) {
       // Busca por CNPJ (usuário emissor)
       console.log('CNPJ recebido:', cnpj);
@@ -95,9 +114,7 @@ export async function POST(req: NextRequest) {
       user = await prisma.user.findFirst({
         where: {
           emissorInfo: {
-            cnpj: {
-              in: [cnpj, cnpjClean]
-            }
+            cnpj: cnpjClean
           }
         },
         include: {
@@ -114,18 +131,36 @@ export async function POST(req: NextRequest) {
       role: user.role
     } : 'NENHUM');
 
+    // Calcular hash SHA-256 do arquivo
+    const fileHash = calculateFileHashFromBase64(report.fileContent);
+
+    // Registrar no audit log
+    await logDocumentSubmission({
+      documentType: 'result',
+      origin: 'API_EXTERNA',
+      emitterCnpj: body.cnpj?.replace(/\D/g, '') || null,
+      receiverCpf: cpfClean, // corrigido aqui
+      protocol: body.documento,
+      fileName: body.report.fileName,
+      fileHash: fileHash,
+      ip: ip.split(',')[0].trim(),
+      userAgent: req.headers.get('user-agent') || null,
+      status: user ? 'SUCCESS' : 'USER_NOT_FOUND',
+      patientId: user?.id || null,
+      patientName: user?.name || null,
+    });
+
     if (!user) {
       console.log('=== ERRO: Usuário não encontrado ===');
       return NextResponse.json({
-        error: cpf ? 'User not found by CPF' : 'User not found by CNPJ',
-        debug: {
-          identifier: cpf || cnpj,
-          clean: (cpf || cnpj).replace(/\D/g, '')
-        }
+        error: cpf
+          ? 'Não encontramos nenhum usuário com o CPF informado. Verifique se o CPF está correto ou cadastrado no sistema.'
+          : 'Não encontramos nenhum emissor com o CNPJ informado. Verifique se o CNPJ está correto ou cadastrado no sistema.'
       }, { status: 404 });
     }
 
     // Cria o laudo na tabela reports
+
     // Para envios externos, precisamos de um emissor. Vamos buscar ou criar um usuário emissor genérico
     let senderId = user.id; // Por padrão, o usuário encontrado
 
@@ -152,17 +187,29 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const reportRecord = await prisma.report.create({
-      data: {
-        protocol: documento,
-        title: `Laudo - ${doctorName}`,
-        fileName: report.fileName,
-        fileUrl: `data:application/pdf;base64,${report.fileContent}`,
-        senderId,
-        receiverId: user.id,
-        status: 'SENT'
+    // Verifica se já existe um report com o mesmo protocolo
+    let reportRecord;
+    try {
+      reportRecord = await prisma.report.create({
+        data: {
+          protocol: documento,
+          title: `Laudo - ${doctorName}`,
+          fileName: report.fileName,
+          fileUrl: `data:application/pdf;base64,${report.fileContent}`,
+          senderId,
+          receiverId: user.id,
+          paciente_id: pacienteId,
+          status: 'SENT'
+        }
+      });
+    } catch (err: any) {
+      if (err?.code === 'P2002' && err?.meta?.target?.includes('protocol')) {
+        return NextResponse.json({
+          error: 'Já existe um documento cadastrado com este número de exame. Por favor, utilize outro número.'
+        }, { status: 409 });
       }
-    });
+      return NextResponse.json({ error: 'Erro ao cadastrar documento. Tente novamente.' }, { status: 500 });
+    }
 
     // Cria notificação
     const notification = await prisma.notification.create({

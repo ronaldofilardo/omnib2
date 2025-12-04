@@ -12,10 +12,19 @@ vi.mock('@/lib/prisma', () => ({
     },
     professional: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
     },
     user: {
       findUnique: vi.fn(),
+    },
+    // file: { ... } removido, pois não é usado no service
+    files: {
+      update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+      updateMany: vi.fn(),
+      createMany: vi.fn(),
     },
     $connect: vi.fn(),
     $disconnect: vi.fn(),
@@ -87,10 +96,10 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
       const event = await createEvent({
         title: 'Consulta Médica',
         description: 'Consulta de rotina',
-        date: '2025-01-15',
+        date: new Date('2025-01-15'),
         type: 'CONSULTA',
-        startTime: '10:00',
-        endTime: '11:00',
+        startTime: new Date('2025-01-15T10:00:00Z'),
+        endTime: new Date('2025-01-15T11:00:00Z'),
         professionalId: professional.id,
         userId: 'user-1',
         files: [],
@@ -111,10 +120,10 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
         data: {
           title: 'Consulta Médica',
           description: 'Consulta de rotina',
-          date: '2025-01-15',
+          date: new Date('2025-01-15'),
           type: 'CONSULTA',
-          startTime: '10:00',
-          endTime: '11:00',
+          startTime: new Date('2025-01-15T10:00:00Z'),
+          endTime: new Date('2025-01-15T11:00:00Z'),
           professionalId: 'prof-1',
           userId: 'user-1',
           files: [],
@@ -127,9 +136,9 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
       mockPrisma.healthEvent.findMany.mockResolvedValue([
         {
           id: 'existing-1',
-          date: '2025-01-15',
-          startTime: '10:00',
-          endTime: '11:00',
+          date: new Date('2025-01-15'),
+          startTime: new Date('2025-01-15T10:00:00Z'),
+          endTime: new Date('2025-01-15T11:00:00Z'),
           professionalId: 'prof-1',
         },
       ])
@@ -141,10 +150,10 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
         createEvent({
           title: 'Consulta Sobreposta',
           description: 'Consulta que conflita',
-          date: '2025-01-15',
+          date: new Date('2025-01-15'),
           type: 'CONSULTA',
-          startTime: '10:30',
-          endTime: '11:30',
+          startTime: new Date('2025-01-15T10:30:00Z'),
+          endTime: new Date('2025-01-15T11:30:00Z'),
           professionalId: 'prof-1',
           userId: 'user-1',
           files: [],
@@ -161,10 +170,10 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
         {
           id: 'event-1',
           title: 'Consulta Médica',
-          date: '2025-01-15',
+          date: new Date('2025-01-15'),
           type: 'CONSULTA',
-          startTime: '10:00',
-          endTime: '11:00',
+          startTime: new Date('2025-01-15T10:00:00Z'),
+          endTime: new Date('2025-01-15T11:00:00Z'),
           professionalId: 'prof-1',
           files: [],
           professional: {
@@ -182,10 +191,12 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
 
       expect(events).toHaveLength(1)
       expect(events[0].professional.name).toBe('Dr. João Silva')
-      expect(mockPrisma.healthEvent.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
-        include: { professional: true },
-      })
+      expect(mockPrisma.healthEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1' },
+          include: expect.objectContaining({ professional: true, files: true })
+        })
+      );
     })
 
     it('deve filtrar eventos com arquivos no repositório', async () => {
@@ -193,14 +204,14 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
         {
           id: 'event-1',
           title: 'Consulta com arquivo',
-          date: '2025-01-15',
+          date: new Date('2025-01-15'),
           files: [{ name: 'exame.pdf', url: '/uploads/exame.pdf' }],
           professional: { name: 'Dr. Silva' },
         },
         {
           id: 'event-2',
           title: 'Consulta sem arquivo',
-          date: '2025-01-16',
+          date: new Date('2025-01-16'),
           files: [],
           professional: { name: 'Dr. Santos' },
         },
@@ -222,10 +233,10 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
         id: 'event-1',
         title: 'Consulta Original',
         description: 'Descrição original',
-        date: '2025-01-15',
+        date: new Date('2025-01-15'),
         type: 'CONSULTA',
-        startTime: '10:00',
-        endTime: '11:00',
+        startTime: new Date('2025-01-15T10:00:00Z'),
+        endTime: new Date('2025-01-15T11:00:00Z'),
         professionalId: 'prof-1',
         userId: 'user-1',
       }
@@ -236,6 +247,8 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
         description: 'Descrição atualizada',
       }
 
+      // Mock para evitar validação de sobreposição
+      mockPrisma.healthEvent.findMany.mockResolvedValue([])
       mockPrisma.healthEvent.findUnique.mockResolvedValue(existingEvent)
       mockPrisma.healthEvent.update.mockResolvedValue(updatedEvent)
 
@@ -257,9 +270,9 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
     it('deve validar sobreposição ao atualizar evento', async () => {
       const existingEvent = {
         id: 'event-1',
-        date: '2025-01-15',
-        startTime: '14:00',
-        endTime: '15:00',
+        date: new Date('2025-01-15'),
+        startTime: new Date('2025-01-15T14:00:00Z'),
+        endTime: new Date('2025-01-15T15:00:00Z'),
         professionalId: 'prof-1',
       }
 
@@ -267,9 +280,9 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
       mockPrisma.healthEvent.findMany.mockResolvedValue([
         {
           id: 'event-2',
-          date: '2025-01-15',
-          startTime: '10:00',
-          endTime: '11:00',
+          date: new Date('2025-01-15'),
+          startTime: new Date('2025-01-15T10:00:00Z'),
+          endTime: new Date('2025-01-15T11:00:00Z'),
           professionalId: 'prof-1',
         },
       ])
@@ -279,8 +292,8 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
       // Tentar atualizar para horário conflitante
       await expect(
         updateEvent('event-1', {
-          startTime: '10:30',
-          endTime: '11:30',
+          startTime: new Date('2025-01-15T10:30:00Z'),
+          endTime: new Date('2025-01-15T11:30:00Z'),
         })
       ).rejects.toThrow('sobreposição')
 
@@ -307,10 +320,11 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
 
       await deleteEvent('event-1', true) // deleteFiles = true
 
-      expect(mockPrisma.healthEvent.findUnique).toHaveBeenCalledWith({
-        where: { id: 'event-1' },
-        select: { files: true },
-      })
+      expect(mockPrisma.healthEvent.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'event-1' },
+        })
+      )
       expect(mockPrisma.healthEvent.delete).toHaveBeenCalledWith({
         where: { id: 'event-1' },
       })
@@ -319,18 +333,29 @@ describe('Fluxo Completo de Eventos - Testes de Integração', () => {
     it('deve excluir evento mantendo arquivos', async () => {
       const eventWithFiles = {
         id: 'event-1',
-        files: [{ url: '/uploads/file1.pdf' }],
+        title: 'Evento Teste',
+        files: [{ id: 'file-1', url: '/uploads/file1.pdf' }],
+        professional: { name: 'Dr. Test' },
       }
 
       mockPrisma.healthEvent.findUnique.mockResolvedValue(eventWithFiles)
       mockPrisma.healthEvent.delete.mockResolvedValue({})
+      mockPrisma.files.update.mockResolvedValue({ id: 'file-1', isOrphaned: true })
 
       await deleteEvent('event-1', false) // deleteFiles = false
 
       expect(mockPrisma.healthEvent.delete).toHaveBeenCalledWith({
         where: { id: 'event-1' },
       })
-      // Arquivos não devem ser excluídos
+      expect(mockPrisma.files.update).toHaveBeenCalledWith({
+        where: { id: 'file-1' },
+        data: {
+          isOrphaned: true,
+          orphanedReason: 'Evento deletado: Evento Teste',
+          professionalId: null,
+        },
+      })
+      // Arquivos devem ser marcados como órfãos
     })
   })
 

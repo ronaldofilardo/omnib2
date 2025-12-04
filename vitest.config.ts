@@ -6,26 +6,37 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   test: {
+    globals: true, // ← JÁ ESTÁ AQUI
     environment: 'happy-dom',
     include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    globals: true,
     setupFiles: [
-      './src/test/setup.ts',
-      './src/test/setupFetchMock.ts',
-      './web/tests/setup/performance-setup.ts',
-      './web/tests/setup/contract-setup.ts'
+      './web/tests/setup.ts',
     ],
     coverage: {
       reporter: ['text', 'lcov', 'html'],
       exclude: [
         'node_modules/',
         'src/test/',
+        'web/tests/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/manual/**',
       ],
+      thresholds: {
+        global: {
+          branches: 70,
+          functions: 70,
+          lines: 70,
+          statements: 70,
+        },
+      },
     },
+    testTimeout: 10000,
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './web/src'),
+      '@tests': path.resolve(__dirname, './web/tests'),
     },
   },
 })

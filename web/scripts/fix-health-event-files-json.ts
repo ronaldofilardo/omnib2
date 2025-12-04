@@ -12,7 +12,7 @@ async function main() {
 
   for (const event of events) {
     let needsUpdate = false
-    let filesField = event.files
+    let filesField: any = event.files
     if (Array.isArray(filesField)) {
       // Se for array JS, transforma em string JSON
       filesField = JSON.stringify(filesField)

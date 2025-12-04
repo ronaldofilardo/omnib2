@@ -2,6 +2,8 @@
 import React from 'react'
 import { Eye, Trash2, UploadCloud } from 'lucide-react'
 import { Button } from './ui/button'
+import { storageManager } from '@/lib/storage'
+import { isMimeTypeAllowed } from '@/lib/storage'
 
 interface FileInfo {
   slot: string
@@ -38,15 +40,19 @@ export function FileSlotRepository({
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
 
-    // Validar tamanho (2KB = 2048 bytes)
-    if (selectedFile.size > 2048) {
-      alert('O arquivo deve ter no máximo 2KB')
+    // Usar validações do storage manager
+    const maxSize = storageManager.getMaxFileSize()
+    if (selectedFile.size > maxSize) {
+      const maxSizeKB = Math.round(maxSize / 1024)
+      const maxSizeMB = maxSize >= 1024 * 1024 ? Math.round(maxSize / (1024 * 1024)) : null
+      const sizeText = maxSizeMB ? `${maxSizeMB}MB` : `${maxSizeKB}KB`
+      alert(`O arquivo deve ter no máximo ${sizeText}`)
       return
     }
 
-    // Validar tipo (apenas imagens)
-    if (!selectedFile.type.startsWith('image/')) {
-      alert('Apenas imagens são permitidas')
+    // Validar tipo MIME usando configuração do storage
+    if (!isMimeTypeAllowed(selectedFile.type)) {
+      alert('Somente arquivos de imagem são permitidos (JPEG, PNG, GIF, WEBP)')
       return
     }
 

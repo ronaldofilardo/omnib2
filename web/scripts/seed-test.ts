@@ -17,9 +17,105 @@ async function main() {
       password: hashedPassword,
       name: 'Usuário Padrão',
       cpf: '12345678901', // CPF obrigatório
+      emailVerified: new Date(), // Email verificado para testes
     },
   })
   console.log('✅ Usuário criado:', user.email)
+
+  // Criar usuários adicionais para testes E2E
+  const testPassword = await bcrypt.hash('password123', 10)
+  
+  const receptorUser = await prisma.user.upsert({
+    where: { email: 'test@example.com' },
+    update: {},
+    create: {
+      email: 'test@example.com',
+      password: testPassword,
+      name: 'Usuário Teste Receptor',
+      cpf: '11111111111',
+      role: 'RECEPTOR',
+      emailVerified: new Date(),
+      acceptedPrivacyPolicy: true,
+      acceptedTermsOfUse: true,
+    },
+  })
+  console.log('✅ Usuário receptor criado:', receptorUser.email)
+
+  const receptorUser2 = await prisma.user.upsert({
+    where: { email: 'receptor@test.com' },
+    update: {},
+    create: {
+      email: 'receptor@test.com',
+      password: testPassword,
+      name: 'Receptor Alternativo',
+      cpf: '22222222222',
+      role: 'RECEPTOR',
+      emailVerified: new Date(),
+      acceptedPrivacyPolicy: true,
+      acceptedTermsOfUse: true,
+    },
+  })
+  console.log('✅ Usuário receptor 2 criado:', receptorUser2.email)
+
+  const emissorPassword = await bcrypt.hash('123456', 10)
+  const emissorUser = await prisma.user.upsert({
+    where: { email: 'labor@omni.com' },
+    update: {},
+    create: {
+      email: 'labor@omni.com',
+      password: emissorPassword,
+      name: 'Laboratório Omni',
+      cpf: '33333333333',
+      role: 'EMISSOR',
+      emailVerified: new Date(),
+      acceptedPrivacyPolicy: true,
+      acceptedTermsOfUse: true,
+    },
+  })
+  console.log('✅ Usuário emissor criado:', emissorUser.email)
+
+  const emissorUser2 = await prisma.user.upsert({
+    where: { email: 'emissor@test.com' },
+    update: {},
+    create: {
+      email: 'emissor@test.com',
+      password: testPassword,
+      name: 'Emissor Teste',
+      cpf: '44444444444',
+      role: 'EMISSOR',
+      emailVerified: new Date(),
+      acceptedPrivacyPolicy: true,
+      acceptedTermsOfUse: true,
+    },
+  })
+  console.log('✅ Usuário emissor 2 criado:', emissorUser2.email)
+
+  // Criar EmissorInfo para os usuários emissores
+  await prisma.emissorInfo.upsert({
+    where: { userId: emissorUser.id },
+    update: {},
+    create: {
+      userId: emissorUser.id,
+      clinicName: 'Laboratório Omni',
+      cnpj: '11111111000111',
+      address: 'Rua Teste, 123 - São Paulo/SP',
+      contact: '(11) 99999-9999',
+    },
+  })
+  console.log('✅ EmissorInfo criado para labor@omni.com')
+
+  await prisma.emissorInfo.upsert({
+    where: { userId: emissorUser2.id },
+    update: {},
+    create: {
+      userId: emissorUser2.id,
+      clinicName: 'Emissor Teste',
+      cnpj: '22222222000122',
+      address: 'Av. Teste, 456 - Rio de Janeiro/RJ',
+      contact: '(21) 88888-8888',
+    },
+  })
+  console.log('✅ EmissorInfo criado para emissor@test.com')
 
   // Criar profissionais de exemplo
   const professionals = [
@@ -84,7 +180,6 @@ async function main() {
       data: {
         ...event,
         userId: user.id,
-        files: [],
       },
     })
     console.log('✅ Evento criado:', healthEvent.title)

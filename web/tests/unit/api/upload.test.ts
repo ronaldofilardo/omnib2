@@ -41,10 +41,25 @@ vi.mock('crypto', () => {
 });
 
 
+// Mock do prisma para evitar acesso real ao banco
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    adminMetrics: {
+      upsert: vi.fn().mockResolvedValue({}),
+    },
+  },
+}))
+
+// Mock de auth
+vi.mock('../../../src/lib/auth', () => ({
+  auth: vi.fn().mockResolvedValue({ id: 'user-1', role: 'RECEPTOR' }),
+}))
+
 // Importar dependências DEPOIS dos mocks
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
+import { prisma } from '../../../src/lib/prisma'
 
 // Criar referências tipadas para os mocks
 const mockWriteFile = writeFile as any
@@ -100,6 +115,11 @@ describe('/api/upload', () => {
         '/uploads/test-uuid.jpg',
         expect.any(Buffer)
       )
+      expect(prisma.adminMetrics.upsert).toHaveBeenCalledWith({
+        where: { id: 'singleton' },
+        update: { totalUploadBytes: { increment: BigInt(12) } }, // 'test content'.length
+        create: { id: 'singleton', totalUploadBytes: BigInt(12) }
+      })
     })
 
     it('should return 400 when no file is provided', async () => {
@@ -137,7 +157,7 @@ describe('/api/upload', () => {
 
     it('should return 400 for file too large', async () => {
       const { POST } = await import('../../../src/app/api/upload/route');
-      const largeContent = new Array(3 * 1024).fill('a').join('')
+      const largeContent = new Array(15 * 1024).fill('a').join('') // 15KB > 10KB limit in test env
       const mockFile = new File([largeContent], 'large.jpg', {
         type: 'image/jpeg',
       })
@@ -150,7 +170,7 @@ describe('/api/upload', () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toMatch(/Arquivo deve ter no máximo/)
+      expect(data.error).toMatch(/Arquivo deve ter menos de/)
     })
 
     it('should return 500 for mkdir error', async () => {
@@ -170,6 +190,42 @@ describe('/api/upload', () => {
 
       expect(response.status).toBe(500)
       expect(data.error).toBe('Erro interno do servidor')
+    })
+
+    it('should warn in development when file approaches production limit', async () => {
+      // Temporarily set NODE_ENV to development
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      const { POST } = await import('../../../src/app/api/upload/route');
+      const nearLimitContent = new Array(2 * 1024).fill('a').join('') // 2KB > 1.5KB
+      const mockFile = new File([nearLimitContent], 'near-limit.jpg', {
+        type: 'image/jpeg',
+      })
+      mockFile.arrayBuffer = vi.fn().mockResolvedValue(new TextEncoder().encode(nearLimitContent).buffer)
+
+      const mockFormData = new FormData()
+      mockFormData.append('file', mockFile)
+
+      const mockRequest = createMockNextRequest(mockFormData)
+
+      mockWriteFile.mockResolvedValue(undefined)
+      mockMkdir.mockResolvedValue(undefined)
+
+      await POST(mockRequest)
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[UPLOAD WARNING]')
+      )
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('se aproxima do limite de produção (2KB)')
+      )
+
+      // Restore original env
+      process.env.NODE_ENV = originalEnv
+      consoleWarnSpy.mockRestore()
     })
   })
 })

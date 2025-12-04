@@ -1,32 +1,26 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
     console.log('[API Repository] Iniciando busca...')
-    const url = request.url.startsWith('http') ? new URL(request.url) : new URL(request.url, 'http://localhost');
-    const userId = url.searchParams.get('userId');
-    console.log('[API Repository] userId recebido:', userId)
-    if (!userId) {
-      return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
+    const user = await auth();
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
+    const userId = user.id;
+    console.log('[API Repository] userId da sessão:', userId)
 
-    // Busca todos os eventos do usuário, com ou sem arquivos
+    // Busca todos os eventos do usuário, incluindo arquivos reais
     const events = await prisma.healthEvent.findMany({
       where: { userId },
-      include: { professional: true },
+      include: { professional: true, files: true },
       orderBy: { date: 'desc' },
     });
-
-    // Garante que files está sempre como array
-    const eventsFormatted = events.map(event => ({
-      ...event,
-      files: typeof event.files === 'string' ? JSON.parse(event.files) : event.files
-    }));
-
-    console.log('[API Repository] Eventos retornados:', eventsFormatted.length)
-    return NextResponse.json(eventsFormatted);
+    console.log('[API Repository] Eventos retornados:', events.length)
+    return NextResponse.json(events);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     console.error('[API Repository] Erro ao buscar eventos com arquivos:', { error: errorMessage, stack: error instanceof Error ? error.stack : undefined });

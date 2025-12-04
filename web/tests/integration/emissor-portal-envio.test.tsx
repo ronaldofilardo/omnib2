@@ -40,7 +40,7 @@ describe('Emissor Portal de Envio - ExternalLabSubmit Integration', () => {
   render(<ExternalLabSubmit fetchImpl={mockFetch} />);
 
       // Verificar elementos da interface
-      expect(screen.getByText('Portal de Envio Externo')).toBeInTheDocument();
+      expect(screen.getByText(/simulador.*envio.*laudo/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText('E-mail do Paciente')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Médico Solicitante')).toBeInTheDocument();
       expect(screen.getByText('Enviar Documento')).toBeInTheDocument();
@@ -199,8 +199,8 @@ describe('Emissor Portal de Envio - ExternalLabSubmit Integration', () => {
       // Como estamos testando isoladamente, apenas verificamos a renderização
   render(<ExternalLabSubmit fetchImpl={mockFetch} />);
 
-      expect(screen.getByText('Portal de Envio Externo')).toBeInTheDocument();
-      expect(screen.getByText('Omni Saúde - Envio de Documentos para Exames')).toBeInTheDocument();
+      expect(screen.getByText(/simulador.*envio.*laudo/i)).toBeInTheDocument();
+      expect(screen.getByText(/simulador de api/i)).toBeInTheDocument();
     });
 
     it('deve manter estado consistente durante uso', () => {

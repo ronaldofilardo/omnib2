@@ -19,7 +19,7 @@ const routeHandlers = new Map<string, Record<HttpMethod, (params?: any) => MockR
 // Configuração das rotas da API
 routeHandlers.set('/api/events', {
   GET: () => ({ status: 200, body: mockEvents }),
-  POST: (data) => {
+  POST: (data: any) => {
     // Validação básica de data
     if (data && data.date) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$/
@@ -36,7 +36,7 @@ routeHandlers.set('/api/events', {
 
 routeHandlers.set('/api/professionals', {
   GET: () => ({ status: 200, body: mockProfessionals }),
-  POST: (data) => ({ status: 201, body: { id: 'prof-3', ...data, message: 'Profissional criado' } }),
+  POST: (data: any) => ({ status: 201, body: { id: 'prof-3', ...data, message: 'Profissional criado' } }),
   PUT: () => ({ status: 200, body: { message: 'Profissional atualizado' } }),
   DELETE: () => ({ status: 200, body: { message: 'Profissional deletado' } }),
   PATCH: () => ({ status: 200, body: { message: 'Profissional atualizado parcialmente' } })
@@ -44,7 +44,7 @@ routeHandlers.set('/api/professionals', {
 
 routeHandlers.set('/api/notifications', {
   GET: () => ({ status: 200, body: mockNotifications }),
-  POST: (data) => ({ status: 201, body: { id: 'notif-3', ...data, message: 'Notificação criada' } }),
+  POST: (data: any) => ({ status: 201, body: { id: 'notif-3', ...data, message: 'Notificação criada' } }),
   PUT: () => ({ status: 200, body: { message: 'Notificação atualizada' } }),
   DELETE: () => ({ status: 200, body: { message: 'Notificação deletada' } }),
   PATCH: () => ({ status: 200, body: { message: 'Notificação atualizada parcialmente' } })

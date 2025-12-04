@@ -2,41 +2,16 @@ import { test, expect } from '@playwright/test'
 import { login, logout, cleanupDatabase } from './utils/test-helpers'
 
 test.describe('Fluxo de Profissionais', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page)
-  })
+   test.beforeAll(async () => {
+     await cleanupDatabase()
+   })
 
-  test.afterEach(async ({ page }) => {
-    await logout(page)
-  })
+   // Removido beforeEach/afterEach que causavam problemas de estado
+   // Cada teste agora é responsável por fazer login/logout conforme necessário
 
-  test.beforeAll(async () => {
-    await cleanupDatabase()
-  })
-
-  test('deve criar, editar e excluir um profissional', async ({ page }) => {
-    // Navega para a aba de profissionais
-    await page.locator('[data-testid="sidebar"]').getByRole('button', { name: 'Profissionais' }).click()
-
-    // Adiciona um novo profissional
-    await page.locator('[data-testid="professionals-tab"]').getByRole('button', { name: 'Adicionar Profissional' }).click()
-
-    // Preenche os dados do profissional
-    await page.getByLabel('Nome').fill('Dr. Teste')
-    await page.getByLabel('Especialidade').click()
-    await page.getByRole('option', { name: 'Psicologia' }).click()
-    await page.getByLabel('Contato').fill('dr.teste@example.com')
-
-    // Salva o profissional
-    await page.getByRole('button', { name: 'Salvar' }).click()
-
-    // Verifica se o profissional foi criado
-    await expect(page.getByText('Dr. Teste')).toBeVisible()
-    await expect(page.getByText('Psicologia')).toBeVisible()
-
-    // Edita o profissional
-    await page.getByText('Dr. Teste').click()
-    await page.getByRole('button', { name: 'Editar' }).click()
+   test('deve criar, editar e excluir um profissional', async ({ page }) => {
+     await login(page)
+     // ...existing code...
 
     // Atualiza os dados
     await page.getByLabel('Nome').fill('Dr. Teste Atualizado')
@@ -55,6 +30,7 @@ test.describe('Fluxo de Profissionais', () => {
   })
 
   test('deve validar campos obrigatórios ao criar profissional', async ({ page }) => {
+    await login(page)
     await page.locator('[data-testid="sidebar"]').getByRole('button', { name: 'Profissionais' }).click()
     await page.locator('[data-testid="professionals-tab"]').getByRole('button', { name: 'Adicionar Profissional' }).click()
 

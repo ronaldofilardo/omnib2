@@ -96,9 +96,9 @@ function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
   )
 }
 
-function DialogTitle({ className, ...props }: React.ComponentProps<'h2'>) {
+function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
-    <h2
+    <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn('text-lg font-semibold leading-none tracking-tight', className)}
       {...props}
@@ -106,9 +106,9 @@ function DialogTitle({ className, ...props }: React.ComponentProps<'h2'>) {
   )
 }
 
-function DialogDescription({ className, ...props }: React.ComponentProps<'p'>) {
+function DialogDescription({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {
   return (
-    <p
+    <DialogPrimitive.Description
       data-slot="dialog-description"
       className={cn('text-sm text-muted-foreground', className)}
       {...props}

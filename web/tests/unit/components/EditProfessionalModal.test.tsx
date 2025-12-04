@@ -23,6 +23,13 @@ global.fetch = mockFetch
 const mockAlert = vi.fn()
 global.alert = mockAlert
 
+// Mock globalCache
+vi.mock('../../../src/lib/globalCache', () => ({
+  globalCache: {
+    fetchWithDeduplication: vi.fn()
+  }
+}))
+
 describe('EditProfessionalModal', () => {
   let mockOnOpenChange: any
   let mockOnSave: any
@@ -66,7 +73,7 @@ describe('EditProfessionalModal', () => {
   it('renders modal when open is true', () => {
     renderModal(true)
 
-    expect(screen.getByText('Editar Profissional')).toBeInTheDocument()
+    expect(screen.getAllByText('Editar Profissional')[0]).toBeInTheDocument()
     expect(screen.getByText('Nome')).toBeInTheDocument()
     expect(screen.getByText('Especialidade')).toBeInTheDocument()
     expect(screen.getByText('Endereço')).toBeInTheDocument()
@@ -284,7 +291,7 @@ describe('EditProfessionalModal', () => {
     renderModal(true)
 
     // The handleAddSpecialty function adds to localSpecialties and sets specialty
-    expect(screen.getByText('Editar Profissional')).toBeInTheDocument()
+    expect(screen.getAllByText('Editar Profissional')[0]).toBeInTheDocument()
   })
 
   it('shows confirmation dialog when closing with changes', () => {
@@ -294,7 +301,7 @@ describe('EditProfessionalModal', () => {
     fireEvent.change(nameInput, { target: { value: 'Dr. Silva Changed' } })
 
     // Attempting to close would show confirmation dialog
-    expect(screen.getByText('Editar Profissional')).toBeInTheDocument()
+    expect(screen.getAllByText('Editar Profissional')[0]).toBeInTheDocument()
   })
 
   it.skip('handles fetch error gracefully (skipped: limitação JSDOM, não indica bug real)', async () => {

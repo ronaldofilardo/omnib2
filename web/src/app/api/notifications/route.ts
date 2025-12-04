@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, NotificationStatus } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { NotificationStatus } from '@prisma/client';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
-  const url = req.url.startsWith('http') ? new URL(req.url) : new URL(req.url, 'http://localhost');
-  const userId = url.searchParams.get('userId');
-  if (!userId) {
-    return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
+  const user = await auth();
+  if (!user) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
+  const userId = user.id;
 
-  // Busca notificações UNREAD para o usuário
+  // Busca notificações UNREAD ou ARCHIVED para o usuário
   const notifications = await prisma.notification.findMany({
     where: {
       userId,
-      status: NotificationStatus.UNREAD
+      status: { in: [NotificationStatus.UNREAD, NotificationStatus.ARCHIVED] }
     },
     orderBy: { createdAt: 'desc' }
   });

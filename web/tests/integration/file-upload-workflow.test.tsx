@@ -60,11 +60,11 @@ describe('File Upload Workflow - Integration', () => {
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
 
-    // Test oversized file
-    const largeFile = new File(['x'.repeat(3000)], 'large.pdf', { type: 'application/pdf' });
+    // Test oversized file - create file larger than 1MB (test config limit)
+    const largeFile = new File(['x'.repeat(1024 * 1024 + 1000)], 'large.pdf', { type: 'application/pdf' });
     fireEvent.change(fileInput, { target: { files: [largeFile] } });
 
-    expect(alertSpy).toHaveBeenCalledWith('O arquivo deve ter no máximo 2KB');
+    expect(alertSpy).toHaveBeenCalledWith('O arquivo deve ter no máximo 1MB');
     expect(mockOnUpload).not.toHaveBeenCalled();
 
     // Reset alert spy
@@ -74,7 +74,7 @@ describe('File Upload Workflow - Integration', () => {
     const textFile = new File(['test'], 'test.txt', { type: 'text/plain' });
     fireEvent.change(fileInput, { target: { files: [textFile] } });
 
-    expect(alertSpy).toHaveBeenCalledWith('Apenas imagens são permitidas');
+    expect(alertSpy).toHaveBeenCalledWith('Somente arquivos de imagem são permitidos (JPEG, PNG, GIF, WEBP)');
     expect(mockOnUpload).not.toHaveBeenCalled();
 
     alertSpy.mockRestore();

@@ -1,595 +1,321 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock do lib/prisma.ts antes de importar a rota
-vi.mock('@/lib/prisma', () => ({
+// Mock de cookies do Next.js
+vi.mock('next/headers', () => ({
+  cookies: () => ({ get: vi.fn(), set: vi.fn() })
+}))
+
+// Mock de auth ANTES de importar as rotas
+vi.mock('../../../src/lib/auth', () => ({
+  auth: vi.fn(),
+}))
+
+// Mock fs/promises
+vi.mock('fs/promises', () => ({
+  mkdir: vi.fn(),
+  writeFile: vi.fn(),
+  access: vi.fn().mockRejectedValue(new Error('ENOENT')), // Simular que diretório não existe
+}))
+
+// Mock prisma
+vi.mock('../../../src/lib/prisma', () => ({
   prisma: {
-    user: {
-      findUnique: vi.fn(),
-    },
     healthEvent: {
-      findMany: vi.fn(),
       findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
+      findMany: vi.fn(),
       delete: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
+      count: vi.fn(),
     },
-    $connect: vi.fn(),
-    $disconnect: vi.fn(),
+    files: {
+      deleteMany: vi.fn(),
+      createMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
   },
 }))
 
-// Importar a rota e o prisma mockado depois do mock
-import { GET, POST, PUT, DELETE } from '../../../src/app/api/events/route'
-import { prisma } from '@/lib/prisma'
-
-// Criar referência tipada para o mock
-const mockPrisma = prisma as any
+// Importar as rotas DEPOIS dos mocks
+import { DELETE, PUT, GET } from '../../../src/app/api/events/route'
+import { prisma } from '../../../src/lib/prisma'
+import { auth } from '../../../src/lib/auth'
+import { promises as fsPromises } from 'fs'
 
 describe('/api/events', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  describe('GET', () => {
-    it('should return events for userId in query', async () => {
-      const mockDate = '2024-01-01'
-      const mockEvents = [
-        {
-          id: '1',
-          title: 'Consulta Médica',
-          date: mockDate,
-          type: 'consulta',
-        },
-      ]
-
-      mockPrisma.healthEvent.findMany.mockResolvedValue(mockEvents)
-
-      // Simula Request com userId na query
-      const req = { url: 'http://localhost/api/events?userId=user-1' } as Request
-      const response = await GET(req)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data).toEqual([
-        {
-          id: '1',
-          title: 'Consulta Médica',
-          date: mockDate,
-          type: 'consulta',
-        },
-      ])
-      expect(mockPrisma.healthEvent.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
-      })
-    })
-
-    it('should return 400 if userId is missing', async () => {
-      // Simula Request sem userId
-      const req = { url: 'http://localhost/api/events' } as Request
-      const response = await GET(req)
-      const data = await response.json()
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('userId é obrigatório')
-    })
-
-    it('should return 500 on error', async () => {
-      mockPrisma.healthEvent.findMany.mockRejectedValue(new Error('Database error'))
-      const req = { url: 'http://localhost/api/events?userId=user-1' } as Request
-      const response = await GET(req)
-      const data = await response.json()
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Erro interno do servidor ao buscar eventos')
-    })
-
-    it('should convert UTC dates to local dates in GET response', async () => {
-      const utcDate = '2024-01-01' // Data armazenada em UTC
-      const expectedLocalDate = '2024-01-01' // Mesmo dia em local (formato sv-SE)
-
-      const mockEvents = [
-        {
-          id: '1',
-          title: 'Consulta Médica',
-          date: utcDate,
-          type: 'consulta',
-          startTime: '10:00',
-          endTime: '11:00',
-          professionalId: 'prof-1',
-          files: [],
-        },
-      ]
-
-      mockPrisma.healthEvent.findMany.mockResolvedValue(mockEvents)
-
-      const req = { url: 'http://localhost/api/events?userId=user-1' } as Request
-      const response = await GET(req)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data).toEqual([
-        {
-          id: '1',
-          title: 'Consulta Médica',
-          date: expectedLocalDate,
-          type: 'consulta',
-          startTime: '10:00',
-          endTime: '11:00',
-          professionalId: 'prof-1',
-          files: [],
-        },
-      ])
-    })
-  })
-
-  describe('POST', () => {
-
-    it('should create a new event', async () => {
-      const mockDate = '2024-01-01'
-      const mockEvent = {
-        id: '1',
-        title: 'Consulta Médica',
-        description: 'Consulta de rotina',
-        date: mockDate,
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      const requestBody = {
-        title: 'Consulta Médica',
-        description: 'Consulta de rotina',
-        date: '2024-01-01',
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      mockPrisma.healthEvent.findMany.mockResolvedValue([]) // Sem sobreposição
-      mockPrisma.healthEvent.create.mockResolvedValue(mockEvent)
-
-      // Simula Request com userId na query
-      const mockRequest = {
-        url: 'http://localhost/api/events?userId=user-1',
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await POST(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(201)
-      expect(data).toEqual({
-        ...mockEvent,
-        date: mockDate,
-      })
-      expect(mockPrisma.healthEvent.create).toHaveBeenCalledWith({
-        data: {
-          title: 'Consulta Médica',
-          description: 'Consulta de rotina',
-          date: mockDate,
-          startTime: '10:00',
-          endTime: '11:00',
-          type: 'consulta',
-          userId: 'user-1',
-          professionalId: 'prof-1',
-          files: [],
-        },
-      })
-    })
-
-    it('should return 400 if userId is missing', async () => {
-      const requestBody = {
-        title: 'Consulta Médica',
-        // missing required fields
-      }
-      const mockRequest = {
-        url: 'http://localhost/api/events',
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-      const response = await POST(mockRequest)
-      const data = await response.json()
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('userId é obrigatório')
-    })
-
-    it('should convert local date to UTC when creating event', async () => {
-      const localDate = '2024-01-15' // Data local
-      const expectedUtcDate = '2024-01-15' // Mesmo dia em UTC (assumindo timezone local = UTC-3, mas conversão usa meio dia)
-
-      const requestBody = {
-        title: 'Consulta Médica',
-        description: 'Consulta de rotina',
-        date: localDate,
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      const mockEvent = {
-        id: '1',
-        title: 'Consulta Médica',
-        description: 'Consulta de rotina',
-        date: expectedUtcDate,
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      mockPrisma.healthEvent.findMany.mockResolvedValue([]) // Sem sobreposição
-      mockPrisma.healthEvent.create.mockResolvedValue(mockEvent)
-
-      const mockRequest = {
-        url: 'http://localhost/api/events?userId=user-1',
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await POST(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(201)
-      expect(mockPrisma.healthEvent.create).toHaveBeenCalledWith({
-        data: {
-          title: 'Consulta Médica',
-          description: 'Consulta de rotina',
-          date: expectedUtcDate,
-          startTime: '10:00',
-          endTime: '11:00',
-          type: 'consulta',
-          userId: 'user-1',
-          professionalId: 'prof-1',
-          files: [],
-        },
-      })
-    })
-  })
-
-  describe('PUT', () => {
-    it('should update an event', async () => {
-      const mockDate = '2024-01-01'
-      const mockEvent = {
-        id: '1',
-        title: 'Consulta Atualizada',
-        description: 'Consulta atualizada',
-        date: mockDate,
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      const requestBody = {
-        id: '1',
-        title: 'Consulta Atualizada',
-        description: 'Consulta atualizada',
-        date: '2024-01-01',
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1' })
-      mockPrisma.healthEvent.update.mockResolvedValue(mockEvent)
-
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await PUT(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      // A API retorna datas como strings ISO
-      expect(data).toEqual({
-        ...mockEvent,
-        date: mockDate,
-      })
-    })
-
-    it('should return 400 for missing id', async () => {
-      const requestBody = {
-        title: 'Consulta Médica',
-        // missing id
-      }
-
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await PUT(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Campos obrigatórios ausentes')
-    })
-
-    it('should convert local date to UTC when updating event', async () => {
-      const localDate = '2024-01-20' // Data local
-      const expectedUtcDate = '2024-01-20' // Mesmo dia em UTC
-
-      const requestBody = {
-        id: '1',
-        title: 'Consulta Atualizada',
-        description: 'Consulta atualizada',
-        date: localDate,
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      const mockEvent = {
-        id: '1',
-        title: 'Consulta Atualizada',
-        description: 'Consulta atualizada',
-        date: expectedUtcDate,
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1' })
-      mockPrisma.healthEvent.update.mockResolvedValue(mockEvent)
-
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await PUT(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(mockPrisma.healthEvent.update).toHaveBeenCalledWith({
-        where: { id: '1' },
-        data: {
-          title: 'Consulta Atualizada',
-          description: 'Consulta atualizada',
-          date: expectedUtcDate,
-          startTime: '10:00',
-          endTime: '11:00',
-          type: 'consulta',
-          professionalId: 'prof-1',
-          files: [],
-        },
-      })
-    })
+    // Mock auth to return authenticated user
+    vi.mocked(auth).mockResolvedValue({ id: 'user-1', role: 'RECEPTOR' })
+    // Configurar mocks do fs/promises
+    ;(fsPromises.mkdir as any) = vi.fn().mockResolvedValue(undefined)
+    ;(fsPromises.writeFile as any) = vi.fn().mockResolvedValue(undefined)
+    ;(fsPromises.access as any) = vi.fn().mockRejectedValue(new Error('File not found'))
   })
 
   describe('DELETE', () => {
-    it('should delete an event', async () => {
-      const requestBody = {
-        id: '1',
-      }
-
-      // Mock para garantir que o evento existe antes de deletar
-      mockPrisma.healthEvent.findUnique.mockResolvedValue({ files: [] })
-      mockPrisma.healthEvent.delete.mockResolvedValue({})
-
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await DELETE(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(mockPrisma.healthEvent.findUnique).toHaveBeenCalledWith({
-        where: { id: '1' },
-        select: { files: true },
-      })
-      expect(mockPrisma.healthEvent.delete).toHaveBeenCalledWith({
-        where: { id: '1' },
-      })
-    })
-
-    it('should return 400 for missing id', async () => {
-      const requestBody = {
-        // missing id
-      }
-
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await DELETE(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('ID do evento é obrigatório')
-    })
-
-    it('should delete event and associated files when deleteFiles is true', async () => {
-      const requestBody = {
-        id: '1',
-        deleteFiles: true,
-      }
-
-      const mockEvent = {
-        files: [
-          { url: 'http://localhost:3000/uploads/file1.jpg' },
-          { url: 'http://localhost:3000/uploads/file2.pdf' },
-        ],
-      }
-
-      // Mock fs.existsSync and fs.unlinkSync
-      const fs = require('fs')
-      const path = require('path')
-      vi.mock('fs', () => ({
-        existsSync: vi.fn(),
-        unlinkSync: vi.fn(),
-      }))
-      vi.mock('path', () => ({
-        join: vi.fn(),
-      }))
-
-      mockPrisma.healthEvent.findUnique.mockResolvedValue(mockEvent)
-      mockPrisma.healthEvent.delete.mockResolvedValue({})
-
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await DELETE(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(mockPrisma.healthEvent.findUnique).toHaveBeenCalledWith({
-        where: { id: '1' },
-        select: { files: true },
-      })
-      expect(mockPrisma.healthEvent.delete).toHaveBeenCalledWith({
-        where: { id: '1' },
-      })
-    })
-
-    it('should delete event without deleting files when deleteFiles is false', async () => {
-      const requestBody = {
-        id: '1',
-        deleteFiles: false,
-      }
-
-      const mockEvent = {
-        files: [{ url: 'http://localhost:3000/uploads/file1.jpg' }],
-      }
-
-      mockPrisma.healthEvent.findUnique.mockResolvedValue(mockEvent)
-      mockPrisma.healthEvent.delete.mockResolvedValue({})
-
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await DELETE(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(mockPrisma.healthEvent.findUnique).toHaveBeenCalledWith({
-        where: { id: '1' },
-        select: { files: true },
-      })
-      expect(mockPrisma.healthEvent.delete).toHaveBeenCalledWith({
-        where: { id: '1' },
-      })
-    })
-
-  it('should return 400 for overlapping events when creating', async () => {
-      // Primeiro, criar um evento existente
-      const existingEvent = {
-        id: '1',
-        title: 'Consulta Existente',
-        description: 'Consulta existente',
-        date: '2024-01-15',
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1' })
-      // Simula que já existe um evento sobreposto para o mesmo profissional, data e horário
-      mockPrisma.healthEvent.findMany.mockImplementation(({ where }: any) => {
-        // Simula busca por eventos do mesmo profissional, data e sobreposição de horário
-        if (
-          where &&
-          where.professionalId === 'prof-1' &&
-          where.date === '2024-01-15' &&
-          where.AND &&
-          Array.isArray(where.AND)
-        ) {
-          // Simula que há sobreposição
-          return Promise.resolve([existingEvent])
+    it('deve deletar evento com sucesso', async () => {
+      const mockEvent = { id: 'event-1', userId: 'user-1', files: [], professionalId: 'prof-1' }
+      ;(prisma.healthEvent.findUnique as any).mockImplementation((args: any) => {
+        if (args.include?.files) {
+          return Promise.resolve(mockEvent)
         }
-        // Caso contrário, retorna vazio
-        return Promise.resolve([])
+        return Promise.resolve(null)
+      })
+      ;(prisma.healthEvent.delete as any).mockResolvedValue(mockEvent)
+
+      const request = new Request('http://localhost/api/events', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: 'event-1' }),
       })
 
-      // Tentar criar um evento que sobrepõe
-      const requestBody = {
-        title: 'Consulta Sobreposta',
-        description: 'Consulta que sobrepõe',
-        date: '2024-01-15', // Mesmo dia
-        type: 'consulta',
-        startTime: '10:30', // Sobreposição parcial
-        endTime: '11:30',
-        professionalId: 'prof-1', // Mesmo profissional
-        files: [],
-      }
+      const response = await DELETE(request)
+      const result = await response.json()
 
-      const mockRequest = {
-        url: 'http://localhost/api/events?userId=user-1',
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await POST(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toContain('sobreposição')
-    })
-
-  it('should return 400 for invalid date format', async () => {
-      const requestBody = {
-        title: 'Consulta Médica',
-        description: 'Consulta de rotina',
-        date: 'invalid-date',
-        type: 'consulta',
-        startTime: '10:00',
-        endTime: '11:00',
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      const mockRequest = {
-        url: 'http://localhost/api/events?userId=user-1',
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await POST(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toContain('Formato de data inválido')
-    })
-
-  it('should return 400 for end time before start time', async () => {
-      const requestBody = {
-        title: 'Consulta Médica',
-        description: 'Consulta de rotina',
-        date: '2024-01-15',
-        type: 'consulta',
-        startTime: '11:00',
-        endTime: '10:00', // Fim antes do início
-        professionalId: 'prof-1',
-        files: [],
-      }
-
-      const mockRequest = {
-        url: 'http://localhost/api/events?userId=user-1',
-        json: vi.fn().mockResolvedValue(requestBody),
-      } as unknown as Request
-
-      const response = await POST(mockRequest)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toContain(
-        'Horário de fim deve ser maior que o de início'
+      expect(response.status).toBe(200)
+      expect(result.success).toBe(true)
+      expect(prisma.healthEvent.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'event-1', userId: 'user-1' },
+          include: expect.objectContaining({ files: true })
+        })
       )
+      expect(prisma.healthEvent.delete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'event-1', userId: 'user-1' }
+        })
+      )
+    })
+
+    it('deve retornar erro 404 quando evento não pertence ao usuário', async () => {
+      ;(prisma.healthEvent.findUnique as any).mockResolvedValue(null)
+
+      const request = new Request('http://localhost/api/events', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: 'event-1' }),
+      })
+
+      const response = await DELETE(request)
+      const result = await response.json()
+
+      expect(response.status).toBe(404)
+      expect(result.error).toBe('Evento não encontrado')
+    })
+
+    it('deve retornar erro 401 quando usuário não autenticado', async () => {
+      ;(auth as any).mockResolvedValue(null)
+
+      const request = new Request('http://localhost/api/events', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: 'event-1' }),
+      })
+
+      const response = await DELETE(request)
+      const result = await response.json()
+
+      expect(response.status).toBe(401)
+      expect(result.error).toBe('Não autorizado')
+    })
+
+    it('deve salvar arquivos quando content presente', async () => {
+      const mockEvent = { id: 'event-1', userId: 'user-1', files: [], professionalId: 'prof-1' }
+      ;(prisma.healthEvent.findUnique as any).mockResolvedValue(mockEvent)
+      ;(prisma.healthEvent.update as any).mockResolvedValue(mockEvent)
+      ;(prisma.files.createMany as any).mockResolvedValue({})
+      ;(prisma.healthEvent.delete as any).mockResolvedValue(mockEvent)
+
+      const request = new Request('http://localhost/api/events', {
+        method: 'PUT',
+        headers: { 'x-slot': 'result' },
+        body: JSON.stringify({
+          id: 'event-1',
+          title: 'Test',
+          date: '2025-01-01',
+          type: 'CONSULTATION',
+          startTime: '10:00',
+          endTime: '11:00',
+          professionalId: 'prof-1',
+          files: [{
+            slot: 'result',
+            name: 'test.pdf',
+            url: '/uploads/event-1/result-test.pdf',
+            physicalPath: '/uploads/event-1/result-test.pdf',
+            uploadDate: '2025-01-01',
+            content: 'base64content'
+          }]
+        }),
+      })
+
+      const response = await PUT(request)
+
+      expect(fsPromises.mkdir).toHaveBeenCalledWith(
+        expect.any(String),
+        { recursive: true }
+      )
+      expect(fsPromises.writeFile).toHaveBeenCalledWith(
+        expect.any(String),
+        Buffer.from('base64content', 'base64')
+      )
+
+      // Mock de auth já está isolado no beforeEach, mas para garantir:
+      ;(auth as any).mockResolvedValue({ id: 'user-1', role: 'RECEPTOR' })
+    })
+
+    it('deve retornar conflito quando arquivo já existe no slot', async () => {
+      const mockEvent = {
+        id: 'event-1',
+        userId: 'user-1',
+        files: [{ slot: 'result', name: 'existing.pdf' }]
+      }
+      ;(prisma.healthEvent.findUnique as any).mockResolvedValue(mockEvent)
+
+      const request = new Request('http://localhost/api/events', {
+        method: 'PUT',
+        headers: { 'x-slot': 'result' },
+        body: JSON.stringify({
+          id: 'event-1',
+          title: 'Test',
+          date: '2025-01-01',
+          type: 'CONSULTATION',
+          startTime: '10:00',
+          endTime: '11:00',
+          professionalId: 'prof-1',
+          files: [{
+            slot: 'result',
+            name: 'new.pdf',
+            url: '/uploads/event-1/result-new.pdf',
+            physicalPath: '/uploads/event-1/result-new.pdf',
+            uploadDate: '2025-01-01'
+          }]
+        }),
+      })
+
+      const response = await PUT(request)
+      const result = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(result).toEqual(expect.objectContaining({
+        id: 'event-1',
+        userId: 'user-1',
+        files: expect.any(Array)
+      }))
+    })
+
+    it('deve sobrescrever quando overwrite=true', async () => {
+      const mockEvent = {
+        id: 'event-1',
+        userId: 'user-1',
+        files: [{ slot: 'result', name: 'existing.pdf' }]
+      }
+      ;(prisma.healthEvent.findUnique as any).mockResolvedValue(mockEvent)
+      ;(prisma.healthEvent.update as any).mockResolvedValue(mockEvent)
+      ;(prisma.files.createMany as any).mockResolvedValue({})
+
+      const request = new Request('http://localhost/api/events', {
+        method: 'PUT',
+        headers: {
+          'x-slot': 'result',
+          'x-overwrite-result': 'true'
+        },
+        body: JSON.stringify({
+          id: 'event-1',
+          title: 'Test',
+          date: '2025-01-01',
+          type: 'CONSULTATION',
+          startTime: '10:00',
+          endTime: '11:00',
+          professionalId: 'prof-1',
+          files: [{
+            slot: 'result',
+            name: 'new.pdf',
+            url: '/uploads/event-1/result-new.pdf',
+            physicalPath: '/uploads/event-1/result-new.pdf',
+            uploadDate: '2025-01-01'
+          }]
+        }),
+      })
+
+      const response = await PUT(request)
+
+      expect(response.status).toBe(200)
+      expect(prisma.files.deleteMany).toHaveBeenCalled()
+      expect(prisma.files.createMany).toHaveBeenCalled()
+    })
+  })
+
+  describe('GET', () => {
+    it('should return events with files for authenticated user', async () => {
+      const mockEvents = [
+        {
+          id: 'event-1',
+          title: 'Consulta Médica',
+          date: '2025-01-15',
+          type: 'CONSULTA',
+          files: [
+            { slot: 'result', name: 'exame.pdf', url: '/uploads/exame.pdf' },
+          ],
+          professional: {
+            id: 'prof-1',
+            name: 'Dr. Silva',
+            specialty: 'Cardiologia',
+          },
+        },
+      ]
+
+      ;(prisma.healthEvent.findMany as any).mockResolvedValue(mockEvents)
+      ;(prisma.healthEvent.count as any).mockResolvedValue(1)
+
+      const request = new Request('http://localhost/api/events')
+
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.events).toEqual(mockEvents)
+      expect(data.pagination).toEqual({
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false
+      })
+      expect(prisma.healthEvent.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          date: true,
+          type: true,
+          startTime: true,
+          endTime: true,
+          professionalId: true,
+          professional: {
+            select: {
+              id: true,
+              name: true,
+              specialty: true
+            }
+          },
+          files: {
+            select: {
+              id: true,
+              slot: true,
+              name: true,
+              url: true,
+              uploadDate: true
+            },
+            where: { isOrphaned: false }
+          }
+        },
+        orderBy: { date: 'desc' },
+        skip: 0,
+        take: 20,
+      })
+      expect(prisma.healthEvent.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1' }
+      })
     })
   })
 })

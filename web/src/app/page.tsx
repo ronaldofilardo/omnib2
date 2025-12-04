@@ -9,6 +9,8 @@ export default async function Page() {
   // Redireciona para a rota inicial correta conforme o papel
   if (user.role === 'EMISSOR') {
     redirect('/laudos');
+  } else if (user.role === 'ADMIN') {
+    redirect('/admin/dashboard');
   } else {
     redirect('/timeline');
   }

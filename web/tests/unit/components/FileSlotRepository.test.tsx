@@ -2,6 +2,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { FileSlotRepository } from '@/components/FileSlotRepository';
 import { vi } from 'vitest';
 
+// Mock do storage manager
+vi.mock('@/lib/storage', () => ({
+  storageManager: {
+    getMaxFileSize: vi.fn(() => 2 * 1024), // 2KB
+  },
+  isMimeTypeAllowed: vi.fn((mimeType: string) => ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType)),
+}));
+
 describe('FileSlotRepository', () => {
   const mockOnUpload = vi.fn();
   const mockOnView = vi.fn();
@@ -111,7 +119,7 @@ describe('FileSlotRepository', () => {
 
     fireEvent.change(fileInput, { target: { files: [textFile] } });
 
-    expect(alertSpy).toHaveBeenCalledWith('Apenas imagens são permitidas');
+    expect(alertSpy).toHaveBeenCalledWith('Somente arquivos de imagem são permitidos (JPEG, PNG, GIF, WEBP)');
     expect(mockOnUpload).not.toHaveBeenCalled();
 
     alertSpy.mockRestore();
@@ -127,24 +135,28 @@ describe('FileSlotRepository', () => {
 
     fireEvent.change(fileInput, { target: { files: [validFile] } });
 
+    // Aguarda a execução assíncrona
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(mockOnUpload).toHaveBeenCalledWith(validFile);
   });
 
   it('handles upload error gracefully', async () => {
-  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-  mockOnUpload.mockRejectedValueOnce(new Error('Upload failed'));
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    mockOnUpload.mockRejectedValueOnce(new Error('Upload failed'));
 
-  render(<FileSlotRepository {...defaultProps} />);
+    render(<FileSlotRepository {...defaultProps} />);
 
-  const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-  const validFile = new File(['test'], 'image.png', { type: 'image/png' });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const validFile = new File(['test'], 'image.png', { type: 'image/png' });
 
-  fireEvent.change(fileInput, { target: { files: [validFile] } });
+    fireEvent.change(fileInput, { target: { files: [validFile] } });
 
-  // Aguarda o efeito do alert
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  expect(alertSpy).toHaveBeenCalledWith('Erro ao fazer upload do arquivo');
-  alertSpy.mockRestore();
+    // Aguarda a execução assíncrona
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(alertSpy).toHaveBeenCalledWith('Erro ao fazer upload do arquivo');
+    alertSpy.mockRestore();
   });
 
   it('applies disabled styling when disabled', () => {

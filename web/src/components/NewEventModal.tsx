@@ -1,17 +1,11 @@
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import React, { useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter, // Importação correta adicionada aqui
-} from './ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog'
 import { Button } from './ui/button'
 import { AddProfessionalModal } from './AddProfessionalModal'
 import { useEventForm } from '@/hooks/useEventForm'
 import { EventForm } from '@/components/EventForm'
+import { useEvents } from '../contexts/EventsContext'
 
 // Tipos
 interface Professional {
@@ -25,19 +19,16 @@ interface Professional {
 interface NewEventModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  professionals: Professional[]
-  setProfessionals: React.Dispatch<React.SetStateAction<Professional[]>>
   userId: string
 }
 
 export default function NewEventModal({
   open,
   onOpenChange,
-  professionals,
-  setProfessionals,
   userId,
 }: NewEventModalProps) {
   const [isAddProfessionalOpen, setIsAddProfessionalOpen] = useState(false)
+  const { events, professionals, createEventOptimistic, fetchProfessionals } = useEvents()
 
   const {
     formState,
@@ -51,6 +42,8 @@ export default function NewEventModal({
   } = useEventForm({
     professionals,
     userId,
+    events,
+    createEventOptimistic,
     onFormSubmitSuccess: () => {
       onOpenChange(false)
     },
@@ -66,12 +59,12 @@ export default function NewEventModal({
       const response = await fetch('/api/professionals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, userId }),
       })
       if (!response.ok) throw new Error('Erro ao salvar profissional')
 
       const savedProfessional: Professional = await response.json()
-      setProfessionals((prev) => [...prev, savedProfessional])
+      await fetchProfessionals() // Refresh professionals
       setFormState((prev) => ({
         ...prev,
         selectedProfessional: savedProfessional.id,
@@ -99,16 +92,11 @@ export default function NewEventModal({
         }}
       >
         <DialogContent className="max-w-[500px] p-0 gap-0 bg-gray-50 border-0 shadow-lg">
-          {/* Descrição oculta para acessibilidade */}
-          <VisuallyHidden>
-            <DialogDescription />
-          </VisuallyHidden>
           <DialogHeader className="bg-gray-200 py-4 px-6 text-center rounded-t-lg">
-            <DialogTitle className="text-gray-800 m-0">Novo Evento</DialogTitle>
-            <DialogDescription className="sr-only">
-              Crie um novo evento de saúde.
-            </DialogDescription>
+            <DialogTitle className="sr-only">Novo Evento</DialogTitle>
+            <DialogDescription className="sr-only">Crie um novo evento de saúde.</DialogDescription>
           </DialogHeader>
+          <div className="text-gray-800 m-0 text-lg font-semibold mb-4">Novo Evento</div>
 
           <form onSubmit={handleSubmit}>
             <div className="bg-white m-6 p-6 rounded-lg shadow-sm">

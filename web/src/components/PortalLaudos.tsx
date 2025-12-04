@@ -13,6 +13,7 @@ interface Laudo {
 export function PortalLaudos() {
   const [laudos, setLaudos] = useState<Laudo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [pacienteId, setPacienteId] = useState('');
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -22,6 +23,7 @@ export function PortalLaudos() {
     try {
       const formData = new FormData();
       formData.append('file', files[0]);
+      formData.append('paciente_id', pacienteId);
 
       const response = await fetch('/api/laudos/upload', {
         method: 'POST',
@@ -43,6 +45,20 @@ export function PortalLaudos() {
 
   return (
     <div className="bg-white rounded-lg shadow p-2 sm:p-4 w-full max-w-2xl mx-auto">
+      {/* Paciente ID Input */}
+      <div className="mb-4">
+        <label htmlFor="paciente-id" className="block text-sm font-medium text-gray-700 mb-2">
+          Código do Paciente
+        </label>
+        <input
+          id="paciente-id"
+          type="text"
+          value={pacienteId}
+          onChange={(e) => setPacienteId(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Digite o código do paciente"
+        />
+      </div>
       {/* Upload Section */}
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center justify-center w-full">

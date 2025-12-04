@@ -5,9 +5,11 @@ import { Input } from './ui/input'
 import { format, toZonedTime } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale/pt-BR'
 import { FileSlotRepository } from './FileSlotRepository'
+import { formatTime } from '../lib/utils'
 
 // Tipos de dados
 interface FileInfo {
+  id: string
   slot: string
   name: string
   url?: string
@@ -96,29 +98,25 @@ function FileSlot({ label, file, eventId, onUpload, onView, onDelete, formatFile
             </button>
             <button
               onClick={async () => {
-                if (!file || !eventId) return;
-                if (!window.confirm(`Deseja realmente deletar o arquivo '${file.name}'?`)) return;
+                if (!file || !file.id) return;
+                if (!window.confirm(`Deseja realmente deletar permanentemente o arquivo '${file.name}'? Esta ação não pode ser desfeita.`)) return;
                 try {
-                  const res = await fetch(`/api/events/${eventId}`);
-                  if (!res.ok) throw new Error('Falha ao buscar evento');
-                  const event = await res.json();
-
-                  const updatedFiles = event.files.filter((f: FileInfo) => f.slot !== file.slot);
-                  const updateRes = await fetch(`/api/events/${eventId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      files: updatedFiles
-                    })
+                  console.log(`[RepositoryTab FileSlot] Deletando arquivo ID: ${file.id}`);
+                  // Usar API correta de hard delete
+                  const res = await fetch(`/api/files/${file.id}`, {
+                    method: 'DELETE',
                   });
 
-                  if (!updateRes.ok) {
-                    const errorData = await updateRes.json();
-                    throw new Error(errorData.error || 'Falha ao atualizar evento');
+                  if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || 'Falha ao deletar arquivo');
                   }
+                  
+                  console.log(`[RepositoryTab FileSlot] Arquivo deletado com sucesso: ${file.name}`);
+                  alert('Arquivo deletado com sucesso!');
                   onDelete();
                 } catch (err) {
-                  console.error('Erro ao deletar arquivo:', err);
+                  console.error('[RepositoryTab FileSlot] Erro ao deletar arquivo:', err);
                   alert(`Erro ao deletar arquivo: ${err instanceof Error ? err.message : 'Erro desconhecido'}. Por favor, tente novamente.`);
                 }
               }}
@@ -143,7 +141,7 @@ function FileSlot({ label, file, eventId, onUpload, onView, onDelete, formatFile
               type="file"
               style={{ display: 'none' }}
               onChange={handleFileChange}
-              accept="*"
+              accept="image/*"
             />
           </>
         )}
@@ -161,9 +159,14 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
   console.log('[RepositoryTab] Props recebidas:', { userId })
 
   const [events, setEvents] = useState<EventWithFiles[]>([])
+  const [orphanFiles, setOrphanFiles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentDateStr, setCurrentDateStr] = useState('')
+  const [previewFile, setPreviewFile] = useState<{
+    url: string
+    name: string
+  } | null>(null)
   useEffect(() => {
     setCurrentDateStr(format(new Date(), 'dd/MM/yyyy - EEEE', { locale: ptBR }))
   }, [])
@@ -173,20 +176,51 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
       try {
         console.log('[RepositoryTab] Iniciando fetch para userId:', userId)
         setLoading(true)
-        const response = await fetch(`/api/repository?userId=${encodeURIComponent(userId)}`)
-        console.log('[RepositoryTab] Response status:', response.status)
-          if (!response.ok) {
-            const error = new Error('Falha ao buscar dados')
-            console.error('[RepositoryTab] Erro ao carregar repositório:', error)
-            throw error
+        
+        const { globalCache } = await import('../lib/globalCache')
+        
+        // Fetch repository data with cache
+        const repositoryData = await globalCache.fetchWithDeduplication(
+          `repository_${userId}`,
+          async () => {
+            console.log('[RepositoryTab] Fetching repository from API')
+            const response = await fetch(`/api/repository?userId=${encodeURIComponent(userId)}`)
+            if (!response.ok) {
+              throw new Error('Falha ao buscar dados do repositório')
+            }
+            return response.json()
+          },
+          {
+            staleTime: 5 * 60 * 1000, // 5 minutes
+            cacheTime: 10 * 60 * 1000 // 10 minutes
           }
-        const data = await response.json()
-        console.log('[RepositoryTab] Dados recebidos:', data)
-        console.log('[RepositoryTab] Número de eventos:', data.length)
-        setEvents(Array.isArray(data) ? data : [])
+        )
+        
+        console.log('[RepositoryTab] Dados recebidos:', repositoryData)
+        setEvents(Array.isArray(repositoryData) ? repositoryData : [])
+
+        // Fetch orphan files with cache
+        const orphanData = await globalCache.fetchWithDeduplication(
+          `repository_orphan_${userId}`,
+          async () => {
+            console.log('[RepositoryTab] Fetching orphan files from API')
+            const response = await fetch(`/api/repository/orphan-files?userId=${encodeURIComponent(userId)}`)
+            if (!response.ok) {
+              throw new Error('Falha ao buscar arquivos órfãos')
+            }
+            return response.json()
+          },
+          {
+            staleTime: 5 * 60 * 1000, // 5 minutes
+            cacheTime: 10 * 60 * 1000 // 10 minutes
+          }
+        )
+        
+        setOrphanFiles(Array.isArray(orphanData) ? orphanData : [])
       } catch (error) {
         console.error('[RepositoryTab] Erro ao carregar repositório:', error)
         setEvents([])
+        setOrphanFiles([])
       } finally {
         setLoading(false)
       }
@@ -247,6 +281,10 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
     return format(date, 'dd/MM/yyyy - EEEE', { locale: ptBR })
   }
 
+  const formatFileDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR')
+  }
+
   console.log('[RepositoryTab] Renderizando - Estado:', {
     userId,
     loading,
@@ -291,7 +329,7 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
           <p className="text-center text-gray-500 mt-10">
             Carregando repositório...
           </p>
-        ) : groupedEvents.length === 0 ? (
+        ) : groupedEvents.length === 0 && orphanFiles.length === 0 ? (
           <p className="text-center text-gray-500 mt-10">
             {searchTerm
               ? 'Nenhum resultado encontrado para sua busca.'
@@ -311,7 +349,7 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                       className="bg-white border border-gray-200 rounded-xl shadow-sm p-6"
                     >
                       <h3 className="font-bold text-lg text-gray-800 mb-4">
-                        {event.title} - {event.professional.name} - {event.startTime} - {event.endTime}
+                        {event.title} - {event.professional.name} [{event.professional.specialty}] - {event.startTime && event.endTime ? `${formatTime(event.startTime)}-${formatTime(event.endTime)}h` : 'Horário não definido'}
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {['request','authorization','certificate','result','prescription','invoice'].map((slotType) => {
@@ -329,31 +367,37 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                           const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
                             if (e.target.files && e.target.files[0]) {
                               try {
+                                const selectedFile = e.target.files[0]
+                                // Validação de tipo de arquivo (deve ser imagem)
+                                if (!selectedFile.type.startsWith('image/')) {
+                                  alert('Apenas arquivos de imagem são aceitos (PNG, JPG, JPEG, GIF, etc.)')
+                                  return
+                                }
+                                // Validação de tamanho (menos de 2KB)
+                                const maxSize = 2 * 1024 // 2KB em bytes
+                                if (selectedFile.size >= maxSize) {
+                                  alert('O arquivo deve ter menos de 2KB')
+                                  return
+                                }
                                 const formData = new FormData()
-                                formData.append('file', e.target.files[0])
-                                const res = await fetch('/api/upload', {
+                                formData.append('file', selectedFile)
+                                formData.append('eventId', event.id)
+                                formData.append('slot', slotType)
+                                const res = await fetch('/api/upload-file', {
                                   method: 'POST',
                                   body: formData,
                                 })
-                                if (!res.ok) throw new Error('Falha no upload')
+                                if (!res.ok) {
+                                  const errorData = await res.json()
+                                  throw new Error(errorData.error || 'Falha no upload')
+                                }
                                 const data = await res.json()
-                                // Atualiza lista de arquivos após upload
-                                setEvents((prev) => prev.map(ev =>
-                                  ev.id === event.id
-                                    ? {
-                                        ...ev,
-                                        files: [
-                                          ...ev.files.filter(f => f.slot !== slotType),
-                                          {
-                                            slot: slotType,
-                                            name: data.name,
-                                            url: data.url,
-                                            uploadDate: data.uploadDate,
-                                          },
-                                        ],
-                                      }
-                                    : ev
-                                ))
+                                // Recarregar dados após upload
+                                const response = await fetch(`/api/repository?userId=${encodeURIComponent(userId)}`);
+                                if (response.ok) {
+                                  const data = await response.json();
+                                  setEvents(Array.isArray(data) ? data : []);
+                                }
                               } catch (err) {
                                 alert('Erro ao fazer upload: ' + (err instanceof Error ? err.message : 'Erro desconhecido'))
                               }
@@ -363,34 +407,29 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                           }
                           // Visualizar
                           const handleView = () => {
-                            if (file) window.open(file.url, '_blank')
+                            if (file && file.url) {
+                              if (file.url.startsWith('data:')) {
+                                setPreviewFile({ url: file.url, name: file.name })
+                              } else {
+                                window.open(file.url, '_blank')
+                              }
+                            }
                           }
-                          // Deletar
+                          // Deletar permanentemente (hard delete)
                           const handleDelete = async () => {
-                            if (!file || !event.id) return;
-                            if (!window.confirm(`Deseja realmente deletar o arquivo '${file.name}'?`)) return;
+                            if (!file) return;
+                            if (!window.confirm(`Deseja realmente deletar permanentemente o arquivo '${file.name}'? Esta ação não pode ser desfeita.`)) return;
                             try {
-                              // Atualiza o array de arquivos local
-                              const updatedFiles = event.files.filter((f) => f.slot !== slotType);
-                              const res = await fetch(`/api/events`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  id: event.id,
-                                  title: event.title,
-                                  // description removido pois EventWithFiles não possui essa propriedade
-                                  date: event.date,
-                                  // type removido pois EventWithFiles não possui essa propriedade
-                                  startTime: event.startTime,
-                                  endTime: event.endTime,
-                                  professionalId: event.professional.id,
-                                  files: updatedFiles,
-                                }),
+                              // Hard delete do arquivo
+                              const res = await fetch(`/api/files/${file.id}`, {
+                                method: 'DELETE',
                               });
                               if (!res.ok) {
                                 const errorData = await res.json();
                                 throw new Error(errorData.error || 'Falha ao deletar arquivo');
                               }
+                              // Atualiza lista local removendo o arquivo do evento
+                              const updatedFiles = event.files.filter((f) => f.id !== file.id);
                               setEvents((prev) => prev.map(ev =>
                                 ev.id === event.id
                                   ? { ...ev, files: updatedFiles }
@@ -408,7 +447,7 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                               }`}
                             >
                               <div className="flex items-center gap-2 overflow-hidden">
-                                <span className={`font-medium ${hasFile ? 'text-emerald-800' : 'text-gray-500'}`}>
+                                <span className={`font-medium ${hasFile ? 'text-emerald-800' : 'text-gray-500'}`}> 
                                   {labels[slotType]}
                                 </span>
                                 {hasFile && (
@@ -438,7 +477,7 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                                 )}
                                 <label title="Upload" className="text-gray-400 hover:text-blue-600 cursor-pointer">
                                   <UploadCloud size={16} />
-                                  <input type="file" style={{ display: 'none' }} onChange={handleUpload} accept="*" />
+                                  <input type="file" style={{ display: 'none' }} onChange={handleUpload} accept="image/*" />
                                 </label>
                               </div>
                             </div>
@@ -450,9 +489,125 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                 </div>
               </div>
             ))}
+
+            {/* Seção de Arquivos Órfãos */}
+            {orphanFiles.length > 0 && (
+              <div>
+                <h2 className="text-xl font-semibold text-orange-700 mb-4 pb-2 border-b border-orange-200">
+                  Arquivos Órfãos ({orphanFiles.length})
+                </h2>
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-6">
+                  <p className="text-orange-800 mb-4">
+                    Estes arquivos foram preservados após a exclusão de profissionais ou eventos associados.
+                    Você pode visualizá-los ou removê-los permanentemente.
+                  </p>
+                  <div className="space-y-3">
+                    {orphanFiles.map((orphanFile) => (
+                      <div
+                        key={orphanFile.id}
+                        className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-300"
+                      >
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium text-gray-800">
+                            {orphanFile.name}
+                          </span>
+                          <span className="text-sm text-orange-600">
+                            {orphanFile.orphanedReason || `Arquivo órfão - origem não identificada`}
+                          </span>
+                          {orphanFile.uploadDate && (
+                            <span className="text-xs text-gray-500">
+                              Upload: {formatFileDate(orphanFile.uploadDate)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              if (orphanFile.url) {
+                                if (orphanFile.url.startsWith('data:')) {
+                                  setPreviewFile({ url: orphanFile.url, name: orphanFile.name })
+                                } else {
+                                  window.open(orphanFile.url, '_blank')
+                                }
+                              }
+                            }}
+                            className="text-gray-500 hover:text-blue-600"
+                            title="Visualizar"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm(`Deseja realmente deletar permanentemente o arquivo órfão '${orphanFile.name}'?`)) return;
+                              try {
+                                const res = await fetch(`/api/repository/orphan-files?fileId=${encodeURIComponent(orphanFile.id)}&userId=${encodeURIComponent(userId)}`, {
+                                  method: 'DELETE',
+                                });
+                                if (!res.ok) throw new Error('Falha ao deletar arquivo órfão');
+                                setOrphanFiles(prev => prev.filter(f => f.id !== orphanFile.id));
+                              } catch (err) {
+                                alert('Erro ao deletar arquivo órfão: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
+                              }
+                            }}
+                            className="text-gray-500 hover:text-red-600"
+                            title="Deletar Permanentemente"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
+
+      {/* Modal de Preview de Arquivo */}
+      {previewFile && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-xl max-w-3xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">{previewFile.name}</h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setPreviewFile(null)}
+              >
+                ×
+              </button>
+            </div>
+            {previewFile.url.startsWith('data:image/') ? (
+              <img
+                src={previewFile.url}
+                alt={previewFile.name}
+                className="max-h-[600px] object-contain"
+              />
+            ) : (
+              <div className="text-center py-8">
+                <Info className="w-16 h-16 mx-auto text-gray-400" />
+                <p className="mt-2">Arquivo: {previewFile.name}</p>
+                <a
+                  href={previewFile.url}
+                  download
+                  className="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Baixar Arquivo
+                </a>
+              </div>
+            )}
+            <div className="mt-4 text-center">
+              <button
+                className="px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition-colors"
+                onClick={() => setPreviewFile(null)}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

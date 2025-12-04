@@ -2,9 +2,15 @@ export interface FileInfo {
   slot: string
   name: string
   url: string
-  uploadDate?: string
-  size?: number
-  mimeType?: string
+  uploadDate?: string | null
+  size?: number | null
+  mimeType?: string | null
+  id?: string
+  professionalId?: string | null
+  eventId?: string | null
+  expiryDate?: string | null
+  isOrphaned?: boolean
+  orphanedReason?: string | null
 }
 
 export interface Professional {
@@ -16,9 +22,9 @@ export interface Professional {
 export interface HealthEvent {
   id: string
   title: string
-  date: string
-  startTime: string
-  endTime: string
+  date: Date
+  startTime: Date
+  endTime: Date
   files: FileInfo[]
   professional: Professional
   userId: string

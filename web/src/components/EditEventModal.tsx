@@ -3,6 +3,8 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from './ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
@@ -140,10 +142,14 @@ export default function EditEventModal({
         <DialogContent
           className="max-w-[500px] p-0 gap-0 bg-[#F5F5F5] border-0 shadow-lg overflow-hidden"
         >
-          <DialogTitle id="edit-event-title" className="text-lg leading-none font-semibold text-[#1F2937] m-0 text-center bg-[#E5E7EB] py-4 px-6">
-            Editar Evento
-          </DialogTitle>
-          {/* Não renderizar DialogDescription se não houver descrição visível */}
+          <DialogHeader className="bg-[#E5E7EB] py-4 px-6">
+            <DialogTitle id="edit-event-title" className="text-lg leading-none font-semibold text-[#1F2937] m-0 text-center">
+              Editar Evento
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Editar informações do evento
+            </DialogDescription>
+          </DialogHeader>
           <div className="bg-white mx-6 my-6 rounded-lg p-6 shadow-sm">
             <div className="flex flex-col gap-4">
               <EventTypeSelect

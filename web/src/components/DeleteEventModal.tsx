@@ -5,6 +5,8 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from './ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
@@ -48,12 +50,16 @@ export function DeleteEventModal({
         className="max-w-[400px] p-0 gap-0 bg-[#F5F5F5] border-0 shadow-lg overflow-hidden"
         aria-describedby="delete-event-description"
       >
-        <DialogTitle id="delete-event-title" className="text-lg leading-none font-semibold text-[#1F2937] m-0 text-center bg-[#E5E7EB] py-4 px-6">
-          Excluir Evento
-        </DialogTitle>
-        <DialogDescription id="delete-event-description" className="sr-only">
-          Confirmar exclusão do evento
-        </DialogDescription>
+        {/* Título acessível sempre presente para leitores de tela */}
+        <DialogTitle className="sr-only">Excluir Evento</DialogTitle>
+        <DialogHeader className="bg-[#E5E7EB] py-4 px-6">
+          <DialogTitle id="delete-event-title" className="text-lg leading-none font-semibold text-[#1F2937] m-0 text-center">
+            Excluir Evento
+          </DialogTitle>
+          <DialogDescription id="delete-event-description" className="sr-only">
+            Confirmar exclusão do evento
+          </DialogDescription>
+        </DialogHeader>
         <div className="bg-white mx-6 my-6 rounded-lg p-6 shadow-sm">
           <div className="flex flex-col gap-4">
             <p className="text-[#374151] text-center">

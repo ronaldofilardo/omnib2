@@ -1,29 +1,24 @@
-
 import { NextRequest } from 'next/server';
 import { vi } from 'vitest';
 
-// Mock Prisma
-let singletonPrisma: any;
-vi.mock('@prisma/client', () => {
-  singletonPrisma = singletonPrisma || {
-    user: { findFirst: vi.fn(), create: vi.fn() },
-    notification: { create: vi.fn() },
-    report: {
-      create: vi.fn().mockResolvedValue({ id: 'report-1' }),
-      update: vi.fn().mockResolvedValue({}),
-    },
-  };
-  function PrismaClient() {
-    return singletonPrisma;
-  }
+// Mock Prisma - instância global
+let mockPrisma = {
+  user: { findFirst: vi.fn(), create: vi.fn() },
+  notification: { create: vi.fn() },
+  report: {
+    create: vi.fn().mockResolvedValue({ id: 'report-1' }),
+    update: vi.fn().mockResolvedValue({}),
+    findUnique: vi.fn().mockResolvedValue(null), // Por padrão, não encontra duplicatas
+  },
+  // mocks extras para evitar erro 500
+  healthEvent: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  files: { create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  professional: { findMany: vi.fn(), create: vi.fn() },
+};
+
+vi.mock('@/lib/prisma', () => {
   return {
-    PrismaClient,
-    NotificationType: {
-      LAB_RESULT: 'LAB_RESULT',
-    },
-    NotificationStatus: {
-      UNREAD: 'UNREAD',
-    },
+    prisma: mockPrisma,
   };
 });
 
@@ -31,18 +26,27 @@ import { PrismaClient } from '@prisma/client';
 
 describe('/api/lab/submit', () => {
 
-  let mockPrisma: any;
   let POST: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-  const { PrismaClient } = await import('@prisma/client');
-  mockPrisma = new PrismaClient();
-  // Limpa mocks do singleton
-  mockPrisma.user.findFirst.mockReset();
-  mockPrisma.notification.create.mockReset();
+    // Limpa mocks
+    mockPrisma.user.findFirst.mockReset();
+    mockPrisma.notification.create.mockReset();
+    mockPrisma.report.findUnique.mockReset().mockResolvedValue(null);
+    mockPrisma.report.create.mockResolvedValue({ id: 'report-1' });
+    mockPrisma.report.update.mockResolvedValue({});
+    // mocks extras
+    if (mockPrisma.files) {
+      mockPrisma.files.create.mockResolvedValue({ id: 'file-1' });
+      mockPrisma.files.update = vi.fn().mockResolvedValue({ id: 'file-1' });
+    }
+    if (mockPrisma.healthEvent) {
+      mockPrisma.healthEvent.create.mockResolvedValue({ id: 'event-1' });
+      mockPrisma.healthEvent.update = vi.fn().mockResolvedValue({ id: 'event-1' });
+    }
     // Importa o handler após o mock
-    const routeModule = await import('@/app/api/lab/submit/route');
+    const routeModule = await import('../../../src/app/api/lab/submit/route');
     POST = routeModule.POST;
   });
 
@@ -86,9 +90,7 @@ describe('/api/lab/submit', () => {
 
     expect(mockPrisma.user.findFirst).toHaveBeenCalledWith({
       where: {
-        cpf: {
-          in: expect.arrayContaining(['12345678901'])
-        }
+        cpf: '12345678901'
       }
     });
 
@@ -254,7 +256,7 @@ describe('/api/lab/submit', () => {
     const data = await response.json();
 
     expect(response.status).toBe(404);
-    expect(data.error).toBe('User not found by CPF');
+    expect(data.error).toBe('Não encontramos nenhum usuário com o CPF informado. Verifique se o CPF está correto ou cadastrado no sistema.');
   });
 
   it('should handle database errors during notification creation', async () => {
@@ -361,7 +363,7 @@ describe('/api/lab/submit', () => {
   });
 
   it('should find user by CPF in different formats', async () => {
-    const mockUser = { id: 'user-1', cpf: '123.456.789-01' };
+    const mockUser = { id: 'user-1', cpf: '12345678901' }; // CPF normalizado no banco
     const mockNotification = {
       id: 'notif-1',
       createdAt: new Date('2024-10-25T10:00:00Z'),
@@ -377,7 +379,7 @@ describe('/api/lab/submit', () => {
         doctorName: 'Dr. João Silva',
         examDate: '2024-10-25',
         documento: 'LAB-12345',
-        cpf: '12345678901', // CPF sem formatação
+        cpf: '123.456.789-01', // CPF com formação (será normalizado)
         report: {
           fileName: 'laudo.pdf',
           fileContent: 'base64content',
@@ -401,20 +403,18 @@ describe('/api/lab/submit', () => {
     // Verifica que foi chamado com múltiplos formatos
     expect(mockPrisma.user.findFirst).toHaveBeenCalledWith({
       where: {
-        cpf: {
-          in: expect.arrayContaining(['12345678901']) // Deve conter o CPF enviado
-        }
+        cpf: '12345678901' // Agora espera apenas o CPF normalizado
       }
     });
   });
 
   it('should find user by formatted CPF', async () => {
     // Resetar o rateLimitMap do módulo para evitar conflito de IP
-    const routeModule = await import('@/app/api/lab/submit/route');
+    const routeModule = await import('../../../src/app/api/lab/submit/route');
     if (routeModule && routeModule.rateLimitMap) {
       routeModule.rateLimitMap.clear();
     }
-    const mockUser = { id: 'user-1', cpf: '12345678901' }; // CPF sem formatação no banco
+    const mockUser = { id: 'user-1', cpf: '12345678901' }; // CPF normalizado no banco
     const mockNotification = {
       id: 'notif-1',
       createdAt: new Date('2024-10-25T10:00:00Z'),
@@ -454,9 +454,7 @@ describe('/api/lab/submit', () => {
     // Verifica que foi chamado com múltiplos formatos
     expect(mockPrisma.user.findFirst).toHaveBeenCalledWith({
       where: {
-        cpf: {
-          in: expect.arrayContaining(['123.456.789-01', '12345678901']) // Deve conter ambos os formatos
-        }
+        cpf: '12345678901' // Agora espera apenas o CPF normalizado
       }
     });
   });

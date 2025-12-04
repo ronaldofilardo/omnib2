@@ -1,0 +1,1064 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.3 [39m[90mC:/apps/HM/Omni/web[39m
+
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mdoes not render modal when open is false
+[22m[39m[GlobalCache] Making new request for key: professionals_specialties
+[GlobalCache] Deduplicating request for key: professionals_specialties
+
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mdoes not render modal when open is false
+[22m[39m[GlobalCache] Cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mrenders modal when open is true[33m 350[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mdoes not render modal when open is false[32m 20[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mloads event data when modal opens
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mpre-fills form with event data
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mloads event data when modal opens[32m 147[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mshows confirmation dialog when closing with changes
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mpre-fills form with event data[32m 133[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mshows confirmation dialog when closing with changes[32m 100[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2msubmits form successfully
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22msubmits form successfully[32m 137[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mhandles submit error
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mopens AddProfessionalModal when add professional button is clicked
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mhandles submit error[32m 138[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mhandles professional save successfully
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mopens AddProfessionalModal when add professional button is clicked[32m 112[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mhandles professional save successfully[32m 86[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mhandles professional save error
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mvalidates start time format
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mhandles professional save error[32m 74[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mvalidates end time format
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mvalidates start time format[32m 87[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mvalidates end time format[32m 80[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mchecks for event overlap
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx[2m > [22m[2mEditEventModal[2m > [22m[2mcloses modal on successful save
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mchecks for event overlap[32m 72[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EditEventModal.test.tsx
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mcloses modal on successful save[32m 101[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditEventModal.test.tsx[2m > [22mEditEventModal[2m > [22mhandles null event gracefully[32m 53[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mrenders file selection modal when open and not showing link[32m 163[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mdisplays file information correctly[32m 54[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mallows selecting and deselecting files[32m 120[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mdisables generate button when no files are selected[32m 54[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22menables generate button when files are selected[32m 85[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mgenerates share link successfully[32m 177[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mdisplays share link and QR code in sharing modal[32m 151[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mcopies link to clipboard when copy button is clicked[32m 116[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mresets modal state when closed[32m 169[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mhandles API errors gracefully[32m 95[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mshows loading state during link generation[32m 130[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/ShareModal.test.tsx[2m > [22mShareModal[2m > [22mdoes not render when open is false[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mrenders modal when open is true[32m 184[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mdoes not render modal when open is false[32m 4[2mms[22m[39m
+ [2m[90mÔåô[39m[22m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mloads specialties on mount (skipped: limita├º├úo JSDOM, n├úo indica bug real)
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mpre-fills form with professional data[32m 59[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mupdates local specialties when fetched[32m 173[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mallows editing name field[32m 65[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mallows changing specialty[32m 153[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mallows editing address field[32m 58[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mallows editing contact field[32m 58[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mshows validation error for empty name[32m 56[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mshows validation error for empty specialty[32m 37[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mcalls onSave with correct data when form is valid[32m 166[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mtrims whitespace from inputs[32m 82[2mms[22m[39m
+ [2m[90mÔåô[39m[22m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mopens AddSpecialtyModal when button is clicked (skipped: limita├º├úo JSDOM, n├úo indica bug real)
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mhandles adding new specialty[32m 35[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mshows confirmation dialog when closing with changes[32m 52[2mms[22m[39m
+ [2m[90mÔåô[39m[22m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mhandles fetch error gracefully (skipped: limita├º├úo JSDOM, n├úo indica bug real)
+ [32mÔ£ô[39m tests/unit/components/EditProfessionalModal.test.tsx[2m > [22mEditProfessionalModal[2m > [22mresets form when professional changes[32m 79[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mrenders modal when open is true[32m 182[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mdoes not render modal when open is false[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mloads specialties on mount[32m 80[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/AddProfessionalModal.test.tsx[2m > [22m[2mAddProfessionalModal[2m > [22m[2mdisplays loaded specialties in select
+[22m[39m[GlobalCache] Making new request for key: professionals_specialties
+[GlobalCache] Deduplicating request for key: professionals_specialties
+[GlobalCache] Deduplicating request for key: professionals_specialties
+
+[90mstdout[2m | tests/unit/components/AddProfessionalModal.test.tsx[2m > [22m[2mAddProfessionalModal[2m > [22m[2mdisplays loaded specialties in select
+[22m[39m[GlobalCache] Cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mdisplays loaded specialties in select[32m 271[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mallows typing in name field[32m 84[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/AddProfessionalModal.test.tsx[2m > [22m[2mAddProfessionalModal[2m > [22m[2mallows selecting specialty
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mallows selecting specialty[32m 283[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mallows typing in address field[32m 93[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/AddProfessionalModal.test.tsx[2m > [22m[2mAddProfessionalModal[2m > [22m[2mallows typing in contact field
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mallows typing in contact field[32m 104[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/AddProfessionalModal.test.tsx[2m > [22m[2mAddProfessionalModal[2m > [22m[2mtrims whitespace from inputs
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mshows validation error for empty name[32m 64[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mshows validation error for empty specialty[32m 56[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mtrims whitespace from inputs[32m 117[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/AddProfessionalModal.test.tsx[2m > [22m[2mAddProfessionalModal[2m > [22m[2mhandles adding new specialty
+[22m[39m[GlobalCache] Returning cached data for key: professionals_specialties
+
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mopens AddSpecialtyModal when button is clicked[32m 56[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mhandles adding new specialty[32m 57[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mshows confirmation dialog when closing with data[32m 71[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddProfessionalModal.test.tsx[2m > [22mAddProfessionalModal[2m > [22mhandles fetch error gracefully[32m 39[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mrenders all form fields[32m 87[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mrenders event type select with options[32m 167[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mcalls handleFieldChange when event type is selected[32m 100[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mrenders professional select with options[32m 86[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mcalls handleFieldChange when professional is selected[32m 95[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mcalls onAddNewProfessional when Novo button is clicked[32m 58[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mrenders date input[32m 51[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mcalls handleFieldChange when date is changed[32m 32[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mrenders time inputs[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mcalls handleFieldChange when start time is changed[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mcalls handleFieldChange when end time is changed[32m 26[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mrenders textarea for observation[32m 26[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mcalls handleFieldChange when observation is changed[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mdisplays character count for observation[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mdisplays error messages for fields[32m 28[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mdisplays overlap error message[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mrenders with pre-filled values correctly[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mapplies error styling to inputs with errors[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mrenders with pre-filled values[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mhandles empty professional options[32m 45[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventForm.test.tsx[2m > [22mEventForm[2m > [22mhandles long observation text[32m 29[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mrenders event information correctly
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mopens view modal when details button is clicked
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mrenders event information correctly[32m 65[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mcopies address to clipboard when copy button is clicked
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mopens delete modal when delete button is clicked
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mopens view modal when details button is clicked[32m 164[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mcopies address to clipboard when copy button is clicked[32m 16[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mcalls onEdit when edit button is clicked
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mopens files modal when files button is clicked
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mopens delete modal when delete button is clicked[32m 116[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mcalls onEdit when edit button is clicked[32m 53[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mdisplays file slots correctly
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mshows uploaded file status when initialFiles are provided
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: [
+  { slot: [32m'request'[39m, name: [32m'Arquivo 1'[39m, url: [32m'url1'[39m },
+  { slot: [32m'authorization'[39m, name: [32m''[39m, url: [32m''[39m },
+  { slot: [32m'certificate'[39m, name: [32m''[39m, url: [32m''[39m },
+  { slot: [32m'result'[39m, name: [32m''[39m, url: [32m''[39m },
+  { slot: [32m'prescription'[39m, name: [32m''[39m, url: [32m''[39m },
+  { slot: [32m'invoice'[39m, name: [32m''[39m, url: [32m''[39m }
+]
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m'Arquivo 1'[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'uploaded'[39m,
+    category: [32m'request'[39m,
+    url: [32m'url1'[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'uploaded'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'uploaded'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'uploaded'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'uploaded'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'uploaded'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mopens files modal when files button is clicked[32m 63[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mdisplays file slots correctly[32m 73[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2muploads file when file is selected and conclude is clicked
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2muploads file when file is selected and conclude is clicked
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mshows uploaded file status when initialFiles are provided[32m 55[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mdisplays observation as instructions when present
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mdisplays description as instructions when observation is empty
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mdisplays standardized instructions for events created from notifications
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mrenders share button
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mcalls onShare when share button is clicked
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22muploads file when file is selected and conclude is clicked[32m 137[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mdisplays observation as instructions when present[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mdisplays description as instructions when observation is empty[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mdisplays standardized instructions for events created from notifications[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mrenders share button[32m 52[2mms[22m[39m
+[90mstdout[2m | tests/unit/components/EventCard.test.tsx[2m > [22m[2mEventCard[2m > [22m[2mopens share modal when share button is clicked and onShare is provided
+[22m[39m[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] useEffect disparado para evento 1, files: []
+[EventCard] Atualizando fileSlots para evento 1: [
+  {
+    name: [32m''[39m,
+    type: [32m'Solicita├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'request'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Autoriza├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'authorization'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Atestado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'certificate'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Laudo/Resultado'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'result'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Prescri├º├úo'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'prescription'[39m,
+    url: [90mundefined[39m
+  },
+  {
+    name: [32m''[39m,
+    type: [32m'Nota Fiscal'[39m,
+    file: [1mnull[22m,
+    status: [32m'empty'[39m,
+    category: [32m'invoice'[39m,
+    url: [90mundefined[39m
+  }
+]
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+[EventCard] Event type: CONSULTATION Title: Consulta Professional: Dr. Silva
+[EventCard] Full title string: Consulta - Dr. Silva - 10:00 - 11:00
+
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mcalls onShare when share button is clicked[32m 65[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/EventCard.test.tsx[2m > [22mEventCard[2m > [22mopens share modal when share button is clicked and onShare is provided[32m 80[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mrenders modal when open is true[32m 167[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mdoes not render modal when open is false[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mallows typing in all input fields[32m 99[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mformats CPF correctly[32m 47[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mformats phone correctly[32m 42[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mtoggles password visibility[32m 71[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mshows error when email, password or CPF is missing[32m 49[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mshows error when CPF has less than 11 digits[32m 67[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mcreates user successfully[32m 92[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mhandles registration error[32m 76[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mshows confirmation dialog when closing with filled data[32m 90[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/CreateUserModal.test.tsx[2m > [22mCreateUserModal[2m > [22mcloses modal without confirmation when no data is filled[32m 36[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddSpecialtyModal.test.tsx[2m > [22mAddSpecialtyModal[2m > [22mrenders modal when open is true[32m 154[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddSpecialtyModal.test.tsx[2m > [22mAddSpecialtyModal[2m > [22mdoes not render modal when open is false[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/components/AddSpecialtyModal.test.tsx[2m > [22mAddSpecialtyModal[2m > [22mallows typing in the specialty name input[32m 59[2mms[22m[39m

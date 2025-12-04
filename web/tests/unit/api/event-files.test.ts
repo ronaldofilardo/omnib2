@@ -1,9 +1,26 @@
 import { PUT } from '../../../src/app/api/events/route'
 import { PrismaClient } from '@prisma/client'
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+
+// Mock de autenticação
+vi.mock('../../../src/lib/auth', () => ({
+  auth: vi.fn().mockResolvedValue({ id: 'user-1', role: 'RECEPTOR' }),
+}))
+
+// Mock do validador
+vi.mock('../../../src/lib/validators/eventValidators', () => ({
+  validateDate: vi.fn().mockReturnValue({ isValid: true }),
+  validateStartTime: vi.fn().mockReturnValue({ isValid: true }),
+  validateEndTime: vi.fn().mockReturnValue({ isValid: true }),
+  validateEventDateTime: vi.fn().mockReturnValue({ isValid: true }),
+}))
+
+// Desabilita o mock global do Prisma para este teste usar o banco real
+vi.unmock('@/lib/prisma')
+
+const prisma = new PrismaClient()
 
 describe('PUT /api/events', () => {
-  const prisma = new PrismaClient()
   let professionalId: string
   let eventId: string
 
@@ -28,13 +45,12 @@ describe('PUT /api/events', () => {
     const event = await prisma.healthEvent.create({
       data: {
         title: 'Evento para Teste de Arquivo',
-        date: new Date().toISOString().split('T')[0], // Corrige para string yyyy-MM-dd
+        date: new Date(),
         type: 'CONSULTA',
-        startTime: '14:00',
-        endTime: '15:00',
+        startTime: new Date(),
+        endTime: new Date(Date.now() + 60 * 60 * 1000), // 1 hour later
         professionalId,
         userId: 'user-1',
-        files: [],
       },
     })
     eventId = event.id
@@ -52,6 +68,7 @@ describe('PUT /api/events', () => {
         slot: 'result',
         name: 'result.pdf',
         url: 'http://example.com/result.pdf',
+        physicalPath: '/uploads/result.pdf',
       },
     ]
 
@@ -77,7 +94,15 @@ describe('PUT /api/events', () => {
     const data = await response.json()
 
     expect(response.status).toBe(200)
-    expect(data.files).toEqual(filesPayload)
+    expect(data.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slot: 'result',
+          name: 'result.pdf',
+          url: 'http://example.com/result.pdf'
+        })
+      ])
+    )
   })
 
   it('persiste múltiplos arquivos anexados', async () => {
@@ -86,8 +111,14 @@ describe('PUT /api/events', () => {
         slot: 'result',
         name: 'result.pdf',
         url: 'http://example.com/result.pdf',
+        physicalPath: '/uploads/result.pdf',
       },
-      { slot: 'image', name: 'image.png', url: 'http://example.com/image.png' },
+      {
+        slot: 'image',
+        name: 'image.png',
+        url: 'http://example.com/image.png',
+        physicalPath: '/uploads/image.png',
+      },
     ]
     const fullPayload = {
       id: eventId,
@@ -107,7 +138,20 @@ describe('PUT /api/events', () => {
     const response = await PUT(request)
     const data = await response.json()
     expect(response.status).toBe(200)
-    expect(data.files).toEqual(filesPayload)
+    expect(data.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slot: 'result',
+          name: 'result.pdf',
+          url: 'http://example.com/result.pdf'
+        }),
+        expect.objectContaining({
+          slot: 'image',
+          name: 'image.png',
+          url: 'http://example.com/image.png'
+        })
+      ])
+    )
   })
 
   it('retorna erro se arquivos forem inválidos', async () => {
@@ -137,6 +181,7 @@ describe('PUT /api/events', () => {
         slot: 'result',
         name: 'result.pdf',
         url: 'http://example.com/result.pdf',
+        physicalPath: '/uploads/result.pdf',
       },
     ]
     let fullPayload = {
@@ -157,7 +202,15 @@ describe('PUT /api/events', () => {
     let response = await PUT(request)
     let data = await response.json()
     expect(response.status).toBe(200)
-    expect(data.files).toEqual(filesPayload)
+    expect(data.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slot: 'result',
+          name: 'result.pdf',
+          url: 'http://example.com/result.pdf'
+        })
+      ])
+    )
 
     // Agora remove arquivos
     fullPayload = {

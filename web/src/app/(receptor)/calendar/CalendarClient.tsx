@@ -33,35 +33,104 @@ export default function CalendarClient({ userId }: CalendarClientProps) {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Buscar profissionais
   useEffect(() => {
     if (!userId) return;
-    fetch(`/api/professionals?userId=${encodeURIComponent(userId)}`, { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setProfessionals(data);
-      });
+
+    const fetchProfessionals = async () => {
+      try {
+        const response = await fetch(`/api/professionals?userId=${encodeURIComponent(userId)}`, {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(10000) // 10s timeout
+        });
+
+        if (!response.ok) throw new Error('Erro ao buscar profissionais');
+
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setProfessionals(data);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar profissionais:', err);
+        setError('Erro ao carregar profissionais');
+      }
+    };
+
+    fetchProfessionals();
   }, [userId]);
 
   // Buscar eventos
   const fetchEvents = useCallback(async () => {
     if (!userId) return;
+
+    setLoading(true);
+    setError(null);
+
     try {
-      const response = await fetch(`/api/events?userId=${encodeURIComponent(userId)}`, { cache: 'no-store' });
-      if (!response.ok) throw new Error('Failed to fetch events');
+      const response = await fetch(`/api/events?userId=${encodeURIComponent(userId)}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000) // 15s timeout para eventos
+      });
+
+      if (!response.ok) throw new Error('Erro ao buscar eventos');
+
       const data = await response.json();
-      if (Array.isArray(data)) {
+
+      // Verificar se resposta tem paginação (nova estrutura)
+      if (data.events && Array.isArray(data.events)) {
+        setEvents(data.events);
+      } else if (Array.isArray(data)) {
+        // Fallback para resposta antiga
         setEvents(data);
+      } else {
+        throw new Error('Formato de resposta inválido');
       }
-    } catch (error) {
-      console.error('Error fetching events:', error);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      console.error('Erro ao buscar eventos:', err);
+      setError(`Erro ao carregar eventos: ${errorMessage}`);
+    } finally {
+      setLoading(false);
     }
   }, [userId]);
 
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando eventos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] bg-gray-50">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Erro ao carregar dados</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={fetchEvents}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return <CalendarTab events={events} professionals={professionals} onBackToTimeline={() => router.push('/timeline')} />;
 }

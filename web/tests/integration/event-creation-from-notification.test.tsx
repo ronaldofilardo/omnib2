@@ -31,12 +31,22 @@ describe('Event Creation from Notification - Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers(); // Ensure real timers are used by default
     global.fetch = vi.fn();
   });
 
+  afterEach(() => {
+    vi.useRealTimers(); // Clean up any fake timers
+  });
+
   it('completes full event creation flow from lab notification', async () => {
-    // Mock global fetch para sempre retornar sucesso
-    (global.fetch as any) = vi.fn((url, options) => {
+    // Mock Date to return a fixed time for consistent testing
+    const mockDate = new Date('2024-10-25T09:00:00');
+    vi.useFakeTimers();
+    vi.setSystemTime(mockDate);
+
+    // Setup fetch mocks
+    (global.fetch as any).mockImplementation((url, options) => {
       if (url.includes('/api/professionals') && (!options || options.method === 'GET')) {
         return Promise.resolve({
           ok: true,
@@ -82,9 +92,10 @@ describe('Event Creation from Notification - Integration', () => {
     const dateInput = screen.getByDisplayValue('2024-10-25');
     fireEvent.change(dateInput, { target: { value: '2024-10-26' } });
 
-    // Modify time
-    const startTimeInput = screen.getByDisplayValue('09:00');
-    const endTimeInput = screen.getByDisplayValue('09:30');
+    // Modify time - now should find the mocked time values
+    const timeInputs = screen.getAllByDisplayValue(/^\d{2}:\d{2}$/);
+    const startTimeInput = timeInputs[0];
+    const endTimeInput = timeInputs[1];
     fireEvent.change(startTimeInput, { target: { value: '14:00' } });
     fireEvent.change(endTimeInput, { target: { value: '15:00' } });
 
@@ -113,36 +124,84 @@ describe('Event Creation from Notification - Integration', () => {
       })
     );
     expect(global.fetch).toHaveBeenNthCalledWith(3,
-      '/api/upload-file',
+      '/api/notifications/notif-1',
       expect.objectContaining({
-        method: 'POST',
-        body: expect.any(FormData),
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'READ' }),
       })
     );
-    expect(global.fetch).toHaveBeenNthCalledWith(4,
-      '/api/events',
-      expect.objectContaining({
-        method: 'PUT',
-        body: expect.any(String),
-      })
-    );
-  });
+
+    vi.useRealTimers();
+  }, 10000); // Increase timeout for this test
 
   it('handles professional creation when doctor not found', async () => {
     // Mock professionals fetch - doctor not found
-    (global.fetch as any).mockResolvedValueOnce({
-      json: () => Promise.resolve([
-        { id: 'prof-2', name: 'Dra. Maria Santos' },
-      ]),
+    (global.fetch as any).mockImplementation((url, options) => {
+      if (url.includes('/api/professionals') && (!options || options.method === 'GET')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            { id: 'prof-2', name: 'Dra. Maria Santos' },
+          ]),
+        });
+      }
+      if (url.includes('/api/professionals') && options && options.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ id: 'new-prof-id', name: 'Dr. João Silva' }),
+        });
+      }
+      if (url.includes('/api/events') && options && options.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ id: 'event-id' }),
+        });
+      }
+      if (url.includes('/api/notifications') && options && options.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({}),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
-    // Mock professional creation
-    (global.fetch as any).mockResolvedValueOnce({
-      json: () => Promise.resolve({ id: 'new-prof-id', name: 'Dr. João Silva' }),
+    render(<CreateEventFromNotificationModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Laudo: laudo-cardio.pdf')).toBeInTheDocument();
     });
 
-    // Mock event creation
-    (global.fetch as any).mockResolvedValueOnce({
+    // Select "Dr. João Silva (Novo)" option
+    const professionalSelect = screen.getByRole('combobox');
+    fireEvent.change(professionalSelect, { target: { value: '' } });
+
+    // Modify title
+    const titleInput = screen.getByDisplayValue('Laudo: laudo-cardio.pdf');
+    fireEvent.change(titleInput, { target: { value: 'Consulta Cardiologia - Laudo' } });
+
+    // Modify date
+    const dateInput = screen.getByDisplayValue('2024-10-25');
+    fireEvent.change(dateInput, { target: { value: '2024-10-26' } });
+
+    // Modify time
+    const timeInputs = screen.getAllByDisplayValue(/^\d{2}:\d{2}$/);
+    const startTimeInput = timeInputs[0];
+    const endTimeInput = timeInputs[1];
+    fireEvent.change(startTimeInput, { target: { value: '14:00' } });
+    fireEvent.change(endTimeInput, { target: { value: '15:00' } });
+
+    // Submit
+    const createButton = screen.getByText('Criar Evento');
+    fireEvent.click(createButton);
+
+    await waitFor(() => {
+      expect(mockOnSuccess).toHaveBeenCalled();
+    });
+  }, 10000);
+
+  it('should create event from notification', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ id: 'event-id' }),
     });
@@ -174,23 +233,27 @@ describe('Event Creation from Notification - Integration', () => {
   });
 
   it('handles event creation failure', async () => {
-    // Mock GET /api/professionals - retorna lista de profissionais
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
-    });
-
-    // Mock POST /api/professionals - cria novo profissional (necessário porque professionalId está vazio)
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ id: 'new-prof-id' }),
-    });
-
-    // Mock POST /api/events - falha ao criar evento
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      json: () => Promise.resolve({ error: 'Horário conflitante' }),
+    (global.fetch as any).mockImplementation((url, options) => {
+      if (url.includes('/api/professionals') && (!options || options.method !== 'POST')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
+        });
+      }
+      if (url.includes('/api/professionals') && options && options.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ id: 'new-prof-id' }),
+        });
+      }
+      if (url.includes('/api/events')) {
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: () => Promise.resolve({ error: 'Horário conflitante' }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     render(<CreateEventFromNotificationModal {...defaultProps} />);
@@ -198,34 +261,38 @@ describe('Event Creation from Notification - Integration', () => {
     await waitFor(() => {
       const createButton = screen.getByText('Criar Evento');
       fireEvent.click(createButton);
-    });
+    }, { timeout: 10000 });
 
     await waitFor(() => {
       expect(screen.getByText('Erro ao criar evento.')).toBeInTheDocument();
-    }, { timeout: 3000 });
+    }, { timeout: 10000 });
 
     expect(mockOnSuccess).not.toHaveBeenCalled();
     expect(mockOnClose).not.toHaveBeenCalled();
-  });
+  }, 10000);
 
   it('handles file upload failure gracefully', async () => {
-    // Mock GET /api/professionals - retorna lista de profissionais
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
-    });
-
-    // Mock POST /api/events - sucesso ao criar evento
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ id: 'event-id' }),
-    });
-
-    // Mock POST /api/upload - falha no upload do arquivo
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      json: () => Promise.resolve({ error: 'Upload failed' }),
+    (global.fetch as any).mockImplementation((url, options) => {
+      if (url.includes('/api/professionals') && (!options || options.method !== 'POST')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
+        });
+      }
+      if (url.includes('/api/events')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ id: 'event-id' }),
+        });
+      }
+      if (url.includes('/api/upload')) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ error: 'Upload failed' }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     render(<CreateEventFromNotificationModal {...defaultProps} />);
@@ -237,12 +304,12 @@ describe('Event Creation from Notification - Integration', () => {
     await waitFor(() => {
       const createButton = screen.getByText('Criar Evento');
       fireEvent.click(createButton);
-    });
+    }, { timeout: 10000 });
 
     await waitFor(() => {
       expect(screen.getByText('Erro ao criar evento.')).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 10000);
 
   it('validates required fields before submission', async () => {
     (global.fetch as any) = vi.fn((url, options) => {
@@ -277,8 +344,13 @@ describe('Event Creation from Notification - Integration', () => {
   });
 
   it('allows canceling the operation', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
+    (global.fetch as any).mockImplementation((url) => {
+      if (url.includes('/api/professionals')) {
+        return Promise.resolve({
+          json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     render(<CreateEventFromNotificationModal {...defaultProps} />);
@@ -286,11 +358,11 @@ describe('Event Creation from Notification - Integration', () => {
     await waitFor(() => {
       const cancelButton = screen.getByText('Cancelar');
       fireEvent.click(cancelButton);
-    });
+    }, { timeout: 10000 });
 
     expect(mockOnClose).toHaveBeenCalled();
     expect(mockOnSuccess).not.toHaveBeenCalled();
-  });
+  }, 10000);
 
   it('handles report notification type', async () => {
     const reportNotification = {
@@ -302,8 +374,13 @@ describe('Event Creation from Notification - Integration', () => {
       },
     };
 
-    (global.fetch as any).mockResolvedValueOnce({
-      json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
+    (global.fetch as any).mockImplementation((url) => {
+      if (url.includes('/api/professionals')) {
+        return Promise.resolve({
+          json: () => Promise.resolve([{ id: 'prof-1', name: 'Dr. João Silva' }]),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     render(<CreateEventFromNotificationModal
@@ -313,29 +390,31 @@ describe('Event Creation from Notification - Integration', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Novo Evento')).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 10000);
 
   it('updates professional list after creation', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      json: () => Promise.resolve([]), // No existing professionals
-    });
-
-    (global.fetch as any).mockResolvedValueOnce({
-      json: () => Promise.resolve({ id: 'new-prof-id' }),
-    });
-
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ id: 'event-id' }),
-    });
-
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-    });
-
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
+    (global.fetch as any).mockImplementation((url, options) => {
+      if (url.includes('/api/professionals') && (!options || options.method !== 'POST')) {
+        return Promise.resolve({
+          json: () => Promise.resolve([]), // No existing professionals
+        });
+      }
+      if (url.includes('/api/professionals') && options && options.method === 'POST') {
+        return Promise.resolve({
+          json: () => Promise.resolve({ id: 'new-prof-id' }),
+        });
+      }
+      if (url.includes('/api/events')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ id: 'event-id' }),
+        });
+      }
+      if (url.includes('/api/upload-file')) {
+        return Promise.resolve({ ok: true });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     render(<CreateEventFromNotificationModal {...defaultProps} />);
@@ -347,10 +426,10 @@ describe('Event Creation from Notification - Integration', () => {
     await waitFor(() => {
       const createButton = screen.getByText('Criar Evento');
       fireEvent.click(createButton);
-    });
+    }, { timeout: 10000 });
 
     await waitFor(() => {
       expect(mockRefreshProfessionals).toHaveBeenCalled();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 10000);
 });

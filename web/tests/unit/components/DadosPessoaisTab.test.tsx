@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PersonalDataTab from '@/components/PersonalDataTab';
 
@@ -31,12 +31,24 @@ describe('DadosPessoaisTab', () => {
   });
 
   it('deve renderizar os dados do usuário corretamente', async () => {
-  render(<PersonalDataTab userId="user-1" />);
-  render(<PersonalDataTab userId="user-1" />);
-  render(<PersonalDataTab userId="user-1" />);
-  render(<PersonalDataTab userId="user-1" />);
-  render(<PersonalDataTab userId="user-1" />);
-  render(<PersonalDataTab userId="user-1" />);
+  act(() => {
+    render(<PersonalDataTab userId="user-1" />);
+  });
+  act(() => {
+    render(<PersonalDataTab userId="user-1" />);
+  });
+  act(() => {
+    render(<PersonalDataTab userId="user-1" />);
+  });
+  act(() => {
+    render(<PersonalDataTab userId="user-1" />);
+  });
+  act(() => {
+    render(<PersonalDataTab userId="user-1" />);
+  });
+  act(() => {
+    render(<PersonalDataTab userId="user-1" />);
+  });
 
     await waitFor(() => {
       expect(screen.getByDisplayValue(mockUserData.name)).toBeInTheDocument();

@@ -1,7 +1,20 @@
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ProfessionalsTab } from '../../src/components/ProfessionalsTab'
 import React from 'react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+
+// Mock do hook useEvents para evitar erro de provider
+vi.mock('../../src/contexts/EventsContext', () => ({
+  useEvents: () => ({
+    events: [],
+    setEvents: vi.fn(),
+    professionals: [],
+    setProfessionals: vi.fn(),
+    refreshEvents: vi.fn(),
+    refreshProfessionals: vi.fn(),
+  })
+}))
 
 describe('ProfessionalsTab - Integração', () => {
   const professionalsMock = [

@@ -7,27 +7,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  RECEPTOR
-  EMISSOR
-}
-
 model User {
-  id              String         @id @default(cuid())
-  email           String         @unique
-  password        String
-  name            String?
-  cpf             String? // CPF para usuários receptores (pessoas físicas)
-  telefone        String?
-  role            UserRole       @default(RECEPTOR)
-  emissorInfo     EmissorInfo? // Informações adicionais para usuários emissores
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  events          HealthEvent[]
-  professionals   Professional[]
-  notifications   Notification[]
-  sentReports     Report[]       @relation("SentReports") // Relatórios enviados (para emissores)
-  receivedReports Report[]       @relation("ReceivedReports") // Relatórios recebidos (para receptores)
+  id                    String         @id @default(cuid())
+  email                 String         @unique
+  password              String
+  name                  String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  cpf                   String?
+  telefone              String?
+  role                  UserRole       @default(RECEPTOR)
+  acceptedPrivacyPolicy Boolean        @default(false)
+  acceptedTermsOfUse    Boolean        @default(false)
+  emailVerified         DateTime?
+  emissorInfo           EmissorInfo?
+  events                HealthEvent[]
+  notifications         Notification[]
+  professionals         Professional[]
+  receivedReports       Report[]       @relation("ReceivedReports")
+  sentReports           Report[]       @relation("SentReports")
 
   @@map("users")
 }
@@ -39,6 +37,7 @@ model Professional {
   address   String?
   contact   String?
   userId    String
+  files     files[]
   events    HealthEvent[]
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -49,18 +48,101 @@ model HealthEvent {
   id             String       @id @default(cuid())
   title          String
   description    String?
-  observation    String? // Observação do evento
-  date           String
-  startTime      String
-  endTime        String
+  date           DateTime
   type           EventType
   userId         String
+  endTime        DateTime
   professionalId String
-  files          Json // Array de objetos: { slot, name, url, uploadDate?, expiryDate? }
+  startTime      DateTime
+  observation    String?
+  files          files[]
   professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("health_events")
+}
+
+model EmissorInfo {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  clinicName String
+  cnpj       String?
+  address    String?
+  contact    String?
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("emissor_info")
+}
+
+model Report {
+  id             String        @id @default(cuid())
+  protocol       String        @unique
+  title          String
+  fileName       String
+  fileUrl        String
+  status         ReportStatus  @default(SENT)
+  senderId       String
+  receiverId     String
+  sentAt         DateTime      @default(now())
+  receivedAt     DateTime?
+  viewedAt       DateTime?
+  notificationId String?       @unique
+  paciente_id    String?
+  notification   Notification? @relation(fields: [notificationId], references: [id])
+  receiver       User          @relation("ReceivedReports", fields: [receiverId], references: [id])
+  sender         User          @relation("SentReports", fields: [senderId], references: [id])
+
+  @@map("reports")
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+  type      NotificationType
+  payload   Json
+  status    NotificationStatus @default(UNREAD)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  documento String?
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report    Report?
+
+  @@index([userId])
+  @@index([status])
+  @@map("notifications")
+}
+
+model files {
+  id             String        @id
+  eventId        String?
+  professionalId String?
+  slot           String
+  name           String
+  url            String
+  physicalPath   String
+  uploadDate     DateTime?
+  expiryDate     DateTime?
+  isOrphaned     Boolean       @default(false) @map("is_orphan")
+  orphanedReason String?       @map("orphaned_reason")
+  health_events  HealthEvent?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  professionals  Professional? @relation(fields: [professionalId], references: [id])
+  fileHash       String?
+}
+
+model AdminMetrics {
+  id                 String   @id @default("singleton")
+  totalFiles         Int      @default(0)
+  totalUploadBytes   BigInt   @default(0)
+  totalDownloadBytes BigInt   @default(0)
+  updatedAt          DateTime @updatedAt
+
+  @@map("admin_metrics")
+}
+
+enum UserRole {
+  RECEPTOR
+  EMISSOR
+  ADMIN
 }
 
 enum EventType {
@@ -78,58 +160,58 @@ enum NotificationStatus {
   ARCHIVED
 }
 
-model EmissorInfo {
-  id         String  @id @default(cuid())
-  userId     String  @unique
-  clinicName String // Nome da clínica/laboratório
-  cnpj       String? // CNPJ da clínica
-  address    String? // Endereço
-  contact    String? // Contato principal
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("emissor_info")
-}
-
 enum ReportStatus {
-  SENT // Enviado pelo emissor
-  RECEIVED // Recebido pelo sistema
-  VIEWED // Visualizado pelo destinatário
-  ARCHIVED // Arquivado
+  SENT
+  RECEIVED
+  VIEWED
+  ARCHIVED
 }
 
-model Report {
-  id             String        @id @default(cuid())
-  protocol       String        @unique // Número do protocolo
-  title          String // Título/descrição do laudo
-  fileName       String // Nome do arquivo
-  fileUrl        String // URL do arquivo
-  status         ReportStatus  @default(SENT)
-  senderId       String // ID do usuário emissor
-  receiverId     String // ID do usuário receptor
-  sender         User          @relation("SentReports", fields: [senderId], references: [id])
-  receiver       User          @relation("ReceivedReports", fields: [receiverId], references: [id])
-  sentAt         DateTime      @default(now()) // Data/hora do envio
-  receivedAt     DateTime? // Data/hora do recebimento
-  viewedAt       DateTime? // Data/hora da visualização
-  notificationId String?       @unique // ID da notificação relacionada
-  notification   Notification? @relation(fields: [notificationId], references: [id])
-
-  @@map("reports")
+enum AuditOrigin {
+  API_EXTERNA
+  PORTAL_PUBLICO
+  PORTAL_LOGADO
 }
 
-model Notification {
-  id        String             @id @default(cuid())
-  userId    String
-  type      NotificationType
-  payload   Json
-  documento String? // Número do documento do laboratório
-  status    NotificationStatus @default(UNREAD)
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  report    Report? // Relação com o relatório
+enum AuditStatus {
+  SUCCESS
+  USER_NOT_FOUND
+  VALIDATION_ERROR
+  SERVER_ERROR
+  PROCESSING
+}
 
-  @@index([userId])
+model AuditLog {
+  id           String      @id @default(cuid())
+  action       String      @default("DOCUMENT_SUBMITTED")
+  origin       AuditOrigin
+  emitterCnpj  String?
+  receiverCpf  String
+  patientId    String?
+  patientName  String?
+  protocol     String?
+  fileName     String
+  fileHash     String?
+  documentType String?     @default("result")
+  ipAddress    String
+  userAgent    String?
+  status       AuditStatus @default(PROCESSING)
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+  receivedAt   DateTime    @updatedAt
+
+  @@index([receiverCpf])
+  @@index([origin])
+  @@index([createdAt])
   @@index([status])
-  @@map("notifications")
+  @@index([fileHash])
+}
+
+model VerificationToken {
+  id         Int      @id @default(autoincrement())
+  identifier String // será o e-mail
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }

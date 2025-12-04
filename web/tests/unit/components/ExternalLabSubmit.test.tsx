@@ -61,6 +61,7 @@ describe('ExternalLabSubmit', () => {
 
     // Preencher campos obrigatórios
     fireEvent.change(screen.getByPlaceholderText('Número do Documento'), { target: { value: 'DOC-123' } });
+    fireEvent.change(screen.getByPlaceholderText('Código do Paciente'), { target: { value: 'PAC-456' } });
     fireEvent.change(screen.getByPlaceholderText('Médico Solicitante'), { target: { value: 'Dr. Test' } });
     fireEvent.change(screen.getByPlaceholderText('E-mail do Paciente'), { target: { value: 'patient@test.com' } });
     fireEvent.change(screen.getByPlaceholderText('000.000.000-00'), { target: { value: '12345678901' } });
@@ -77,10 +78,11 @@ describe('ExternalLabSubmit', () => {
 
     // Aguardar processamento
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/lab/submit', expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('"cpf":"12345678901"'), // CPF sem formatação
-      }));
+      const call = mockFetch.mock.calls[0][1];
+      expect(call.method).toBe('POST');
+      const body = JSON.parse(call.body);
+      expect(body.cpf).toBe('12345678901'); // CPF sem formatação
+      expect(body.pacienteId).toBe('PAC-456'); // paciente_id
     });
   });
 
@@ -89,6 +91,7 @@ describe('ExternalLabSubmit', () => {
 
     // Preencher todos os campos obrigatórios, exceto CPF inválido
     fireEvent.change(screen.getByPlaceholderText('Número do Documento'), { target: { value: 'DOC-123' } });
+    fireEvent.change(screen.getByPlaceholderText('Código do Paciente'), { target: { value: 'PAC-456' } });
     fireEvent.change(screen.getByPlaceholderText('Médico Solicitante'), { target: { value: 'Dr. Test' } });
     fireEvent.change(screen.getByPlaceholderText('E-mail do Paciente'), { target: { value: 'patient@test.com' } });
     fireEvent.change(screen.getByPlaceholderText('000.000.000-00'), { target: { value: '123456789' } });
@@ -111,6 +114,7 @@ describe('ExternalLabSubmit', () => {
 
     // Preencher todos os campos obrigatórios
     fireEvent.change(screen.getByPlaceholderText('Número do Documento'), { target: { value: 'DOC-123' } });
+    fireEvent.change(screen.getByPlaceholderText('Código do Paciente'), { target: { value: 'PAC-456' } });
     fireEvent.change(screen.getByPlaceholderText('Médico Solicitante'), { target: { value: 'Dr. Test' } });
     fireEvent.change(screen.getByPlaceholderText('E-mail do Paciente'), { target: { value: 'patient@test.com' } });
     fireEvent.change(screen.getByPlaceholderText('000.000.000-00'), { target: { value: '12345678901' } });
@@ -144,6 +148,7 @@ describe('ExternalLabSubmit', () => {
 
     // Preencher todos os campos obrigatórios
     fireEvent.change(screen.getByPlaceholderText('Número do Documento'), { target: { value: 'DOC-123' } });
+    fireEvent.change(screen.getByPlaceholderText('Código do Paciente'), { target: { value: 'PAC-456' } });
     fireEvent.change(screen.getByPlaceholderText('Médico Solicitante'), { target: { value: 'Dr. Test' } });
     fireEvent.change(screen.getByPlaceholderText('E-mail do Paciente'), { target: { value: 'patient@test.com' } });
     fireEvent.change(screen.getByPlaceholderText('000.000.000-00'), { target: { value: '12345678901' } });
@@ -161,7 +166,7 @@ describe('ExternalLabSubmit', () => {
 
     // Aguardar mensagem de erro
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toHaveTextContent('Erro: User not found by CPF');
+      expect(screen.getByTestId('error-message')).toHaveTextContent('Erro: Não encontramos nenhum usuário com o CPF informado. Verifique se o CPF está correto ou cadastrado no sistema.');
     });
   });
 
@@ -172,6 +177,7 @@ describe('ExternalLabSubmit', () => {
 
     // Preencher todos os campos obrigatórios
     fireEvent.change(screen.getByPlaceholderText('Número do Documento'), { target: { value: 'DOC-123' } });
+    fireEvent.change(screen.getByPlaceholderText('Código do Paciente'), { target: { value: 'PAC-456' } });
     fireEvent.change(screen.getByPlaceholderText('Médico Solicitante'), { target: { value: 'Dr. Test' } });
     fireEvent.change(screen.getByPlaceholderText('E-mail do Paciente'), { target: { value: 'patient@test.com' } });
     fireEvent.change(screen.getByPlaceholderText('000.000.000-00'), { target: { value: '12345678901' } });
@@ -185,6 +191,7 @@ describe('ExternalLabSubmit', () => {
 
     // Verificar que campos estão preenchidos
     expect(screen.getByPlaceholderText('Número do Documento')).toHaveValue('DOC-123');
+    expect(screen.getByPlaceholderText('Código do Paciente')).toHaveValue('PAC-456');
     expect(screen.getByPlaceholderText('Médico Solicitante')).toHaveValue('Dr. Test');
     expect(screen.getByPlaceholderText('E-mail do Paciente')).toHaveValue('patient@test.com');
     expect(screen.getByPlaceholderText('000.000.000-00')).toHaveValue('123.456.789-01');
@@ -202,6 +209,7 @@ describe('ExternalLabSubmit', () => {
     // Aguardar limpeza do formulário após sucesso
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Número do Documento')).toHaveValue('');
+      expect(screen.getByPlaceholderText('Código do Paciente')).toHaveValue('');
       expect(screen.getByPlaceholderText('Médico Solicitante')).toHaveValue('');
       expect(screen.getByPlaceholderText('E-mail do Paciente')).toHaveValue('');
       expect(screen.getByPlaceholderText('000.000.000-00')).toHaveValue('');

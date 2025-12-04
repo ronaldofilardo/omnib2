@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from './ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
@@ -64,14 +64,10 @@ export function AddSpecialtyModal({
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-[400px] p-0 gap-0 bg-white border-0 shadow-xl">
-          {/* Descrição oculta para acessibilidade */}
-          <VisuallyHidden>
-            <DialogDescription />
-          </VisuallyHidden>
-          <VisuallyHidden>
-            <DialogTitle>Adicionar Nova Especialidade</DialogTitle>
-          </VisuallyHidden>
-          {/* Header removido: título duplicado, pois DialogTitle já cobre acessibilidade e visual */}
+          <DialogHeader>
+            <DialogTitle className="sr-only">Adicionar Nova Especialidade</DialogTitle>
+            <DialogDescription className="sr-only">Formulário para adicionar uma nova especialidade</DialogDescription>
+          </DialogHeader>
           {/* Form */}
           <div className="px-10 pt-6 pb-8">
             <div className="space-y-2 mb-8">

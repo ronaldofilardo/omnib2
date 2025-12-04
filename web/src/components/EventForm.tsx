@@ -9,7 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select'
-import { EventType } from '@prisma/client'
+
+// Definição local do enum EventType para uso no client
+export enum EventType {
+  CONSULTA = 'CONSULTA',
+  EXAME = 'EXAME',
+}
 
 // Tipos
 interface Professional {

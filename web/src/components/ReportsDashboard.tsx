@@ -1,54 +1,68 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 
-interface Report {
-  id: string;
+interface Document {
   protocol: string;
-  title: string;
+  patientName: string;
+  emitterCnpj: string | null;
+  createdAt: string;
   fileName: string;
-  fileUrl: string;
+  fileHash: string | null;
+  documentType: string;
   status: string;
-  sentAt: string;
-  receivedAt?: string;
-  viewedAt?: string;
-  sender: {
-    name: string;
-    emissorInfo?: {
-      cnpj?: string;
-      clinicName?: string;
-    };
-  };
-  receiver: {
-    name: string;
-    cpf?: string;
-  };
+  receiverCpf: string;
+  receivedAt: string;
+  origin: string;
 }
 
+
 export function ReportsDashboard() {
-  const [reports, setReports] = useState<Report[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchReports() {
+    async function fetchDocuments() {
       try {
-        const response = await fetch('/api/reports');
-        if (!response.ok) throw new Error('Falha ao carregar relatórios');
+        setError(null);
+        const response = await fetch('/api/admin/audit-documents');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('API Error:', response.status, response.statusText, errorText);
+          throw new Error(`Falha ao carregar documentos: ${response.status} ${response.statusText}`);
+        }
         const data = await response.json();
-        setReports(Array.isArray(data.reports) ? data.reports : []);
+        console.log('API Response:', data);
+        setDocuments(Array.isArray(data.documents) ? data.documents : []);
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
         console.error('Erro ao carregar relatórios:', error);
-        setReports([]);
+        setError(errorMessage);
+        setDocuments([]);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchReports();
+    fetchDocuments();
   }, []);
+
 
   if (loading) {
     return <div>Carregando...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="text-red-600">
+          <h3 className="text-lg font-semibold mb-2">Erro ao carregar documentos</h3>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -67,7 +81,13 @@ export function ReportsDashboard() {
                 Arquivo
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Paciente ID
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Destinatário
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Emissor (CNPJ)
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Data de Envio
@@ -81,33 +101,37 @@ export function ReportsDashboard() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {reports.map((report) => (
-              <tr key={report.id}>
+            {documents.map((doc, idx) => (
+              <tr key={doc.protocol || idx}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {report.protocol}
+                  {doc.protocol}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {report.fileName}
+                  {doc.fileName}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {report.receiver.name}
+                  {doc.patientName || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(report.sentAt).toLocaleString('pt-BR')}
+                  {doc.receiverCpf || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {report.receivedAt ? new Date(report.receivedAt).toLocaleString('pt-BR') : '-'}
+                  {doc.emitterCnpj ? doc.emitterCnpj : '—'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(doc.createdAt).toLocaleString('pt-BR')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {doc.receivedAt ? new Date(doc.receivedAt).toLocaleString('pt-BR') : '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full
-                    ${report.status === 'SENT' ? 'bg-blue-100 text-blue-800' :
-                    report.status === 'RECEIVED' ? 'bg-yellow-100 text-yellow-800' :
-                    report.status === 'VIEWED' ? 'bg-green-100 text-green-800' :
+                    ${doc.status === 'PROCESSING' ? 'bg-blue-100 text-blue-800' :
+                    doc.status === 'SUCCESS' ? 'bg-green-100 text-green-800' :
                     'bg-gray-100 text-gray-800'}`}>
-                    {report.status === 'SENT' ? 'ENVIADO' :
-                     report.status === 'RECEIVED' ? 'RECEBIDO' :
-                     report.status === 'VIEWED' ? 'VISUALIZADO' :
-                     report.status}
+                    {doc.status === 'PROCESSING' ? 'Enviado' :
+                     doc.status === 'SUCCESS' ? 'Visualizado' :
+                     doc.status}
                   </span>
                 </td>
               </tr>

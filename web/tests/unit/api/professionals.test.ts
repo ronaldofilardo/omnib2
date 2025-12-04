@@ -1,6 +1,15 @@
 import { POST } from '../../../src/app/api/professionals/route'
 import { PrismaClient } from '@prisma/client'
-import { describe, it, expect, afterAll, beforeAll } from 'vitest'
+import { describe, it, expect, afterAll, beforeAll, vi } from 'vitest'
+import { auth } from '../../../src/lib/auth'
+
+// Mock auth
+vi.mock('../../../src/lib/auth', () => ({
+  auth: vi.fn(),
+}))
+
+// Desabilita o mock global do Prisma para este teste usar o banco real
+vi.unmock('@/lib/prisma')
 
 const prisma = new PrismaClient()
 
@@ -35,13 +44,13 @@ describe('POST /api/professionals', () => {
   })
 
   it('cria um novo profissional', async () => {
+    ;(auth as any).mockResolvedValue({ id: createdUserId, role: 'RECEPTOR' })
 
     const professionalData = {
       name: 'Dr. House',
       specialty: 'Diagnóstico',
       address: '123, Baker Street',
       contact: '999-888-777',
-      userId: createdUserId, // Garante que o handler encontra o usuário correto
     }
 
     const request = new Request('http://localhost/api/professionals', {

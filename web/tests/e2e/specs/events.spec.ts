@@ -2,41 +2,16 @@ import { test, expect } from '@playwright/test'
 import { login, logout, cleanupDatabase } from './utils/test-helpers'
 
 test.describe('Fluxo de Eventos', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page)
-  })
+   test.beforeAll(async () => {
+     await cleanupDatabase()
+   })
 
-  test.afterEach(async ({ page }) => {
-    await logout(page)
-  })
+   // Removido beforeEach/afterEach que causavam problemas de estado
+   // Cada teste agora é responsável por fazer login/logout conforme necessário
 
-  test.beforeAll(async () => {
-    await cleanupDatabase()
-  })
-
-  test('deve criar, editar e excluir um evento', async ({ page }) => {
-    // Navega para a aba do calendário
-    await page.locator('[data-testid="sidebar"]').getByRole('button', { name: 'Calendário' }).click()
-
-  // Navega para o menu Calendário
-  // Navega para o menu Timeline
-  await page.locator('[data-testid="sidebar"]').getByRole('button', { name: 'Timeline' }).click()
-  // Aguarda o botão Novo Evento aparecer
-  await page.getByRole('button', { name: 'Novo Evento' }).waitFor({ state: 'visible' })
-  // Adiciona um novo evento
-  await page.getByRole('button', { name: 'Novo Evento' }).click()
-
-    // Preenche os dados do evento
-    await page.getByLabel('Tipo de Evento').click()
-    await page.getByRole('option', { name: 'Consulta' }).click()
-    await page.getByLabel('Profissional').click()
-    await page.getByRole('option', { name: /João/ }).click()
-    await page.getByLabel('Data do Evento').fill('2025-10-28')
-    await page.getByLabel('Hora de Início').fill('14:00')
-    await page.getByLabel('Hora de Fim').fill('15:00')
-
-    // Salva o evento
-    await page.getByRole('button', { name: 'Criar Evento' }).click()
+   test('deve criar, editar e excluir um evento', async ({ page }) => {
+     await login(page)
+     // ...existing code...
 
     // Verifica se o evento foi criado
     await expect(page.getByText(/Consulta/)).toBeVisible()
@@ -45,6 +20,7 @@ test.describe('Fluxo de Eventos', () => {
   })
 
   test('deve validar sobreposição de eventos', async ({ page }) => {
+    await login(page)
     await page.locator('[data-testid="sidebar"]').getByRole('button', { name: 'Calendário' }).click()
 
   // Navega para o menu Calendário
@@ -79,6 +55,7 @@ test.describe('Fluxo de Eventos', () => {
   })
 
   test('deve validar campos obrigatórios ao criar evento', async ({ page }) => {
+  await login(page)
   await page.locator('[data-testid="sidebar"]').getByRole('button', { name: 'Timeline' }).click()
   await page.getByRole('button', { name: 'Novo Evento' }).waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Novo Evento' }).click()

@@ -20,6 +20,9 @@ async function getEvent(id: string) {
     // Garante que observation nunca será null, apenas string ou undefined
     return {
       ...event,
+      date: event.date.toISOString().split('T')[0], // Converte Date para string YYYY-MM-DD
+      startTime: event.startTime.toISOString().split('T')[1].substring(0, 5), // HH:MM
+      endTime: event.endTime.toISOString().split('T')[1].substring(0, 5), // HH:MM
       observation: event.observation ?? undefined,
     }
   } catch (error) {

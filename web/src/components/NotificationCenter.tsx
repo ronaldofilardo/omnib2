@@ -12,6 +12,7 @@ export interface NotificationPayload {
     fileContent: string;
   };
   reportId?: string;
+  documentType?: string;
 }
 
 export interface Notification {
@@ -22,15 +23,30 @@ export interface Notification {
   status: string;
 }
 
+export interface DirectNotification {
+  id: string;
+  protocol: string;
+  title: string;
+  fileName: string;
+  fileUrl: string;
+  status: string;
+  notificationId: string;
+  sender: { name: string; emissorInfo?: any };
+  receiver: { name: string; cpf: string };
+  sentAt: string;
+  receivedAt: string;
+  viewedAt: string;
+}
+
 interface Professional {
   id: string;
   name: string;
 }
 
 interface NotificationCenterProps {
-  userId: string
-  onProfessionalCreated?: () => void
-}
+   userId: string
+   onProfessionalCreated?: () => Promise<void>
+ }
 
 export default function NotificationCenter({ userId, onProfessionalCreated }: NotificationCenterProps) {
    const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -120,16 +136,15 @@ export default function NotificationCenter({ userId, onProfessionalCreated }: No
   };
 
   useEffect(() => {
-    console.log('[NotificationCenter] useEffect triggered, mounted:', mounted, 'userId:', userId);
     if (mounted) {
-      console.log('[NotificationCenter] Calling fetchNotifications');
       fetchNotifications();
-    } else {
-      console.log('[NotificationCenter] Not mounted yet, skipping fetchNotifications');
     }
   }, [userId, mounted]);
 
-  if (!mounted || loading) return (
+  // Evita mismatch de hidratação: só renderiza conteúdo após mounted ser true
+  if (!mounted) return null;
+
+  if (loading) return (
     <div className="flex-1 w-full md:w-[1160px] relative ml-0 md:ml-0 h-screen overflow-y-auto">
       <div className="flex items-center justify-center h-full text-gray-400 text-lg">Carregando notificações...</div>
     </div>
@@ -154,16 +169,14 @@ export default function NotificationCenter({ userId, onProfessionalCreated }: No
   };
 
   // Atualizar profissionais após criar evento
-  const handleSuccess = () => {
-    fetchNotifications();
+  const handleSuccess = async () => {
+    await fetchNotifications();
     // Atualiza profissionais localmente também
     const url = userId ? `/api/professionals?userId=${encodeURIComponent(userId)}` : '/api/professionals';
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setProfessionals(data);
-      });
-    if (onProfessionalCreated) onProfessionalCreated();
+    const res = await fetch(url);
+    const data = await res.json();
+    if (Array.isArray(data)) setProfessionals(data);
+    if (onProfessionalCreated) await onProfessionalCreated();
   }
 
   return (
@@ -177,18 +190,38 @@ export default function NotificationCenter({ userId, onProfessionalCreated }: No
               className="bg-white border border-gray-200 rounded-xl shadow-md p-6 flex flex-col gap-2"
             >
               <div className="text-base font-semibold text-[#10B981] mb-1 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-[#F59E42]" aria-label="Notificação de laudo" />
-                <span>Laudo recebido:</span>
+                <Bell className="w-5 h-5 text-[#F59E42]" aria-label="Notificação de documento" />
+                <span>{(() => {
+                  const documentTypeLabels = {
+                    request: 'Solicitação',
+                    authorization: 'Autorização',
+                    certificate: 'Atestado',
+                    result: 'Laudo/Resultado',
+                    prescription: 'Prescrição',
+                    invoice: 'Nota Fiscal'
+                  };
+                  const type = n.payload.documentType || 'result';
+                  return `${documentTypeLabels[type as keyof typeof documentTypeLabels] || 'Documento'} recebido:`;
+                })()}</span>
                 <span className="text-gray-700 font-normal">{n.payload.report.fileName}</span>
               </div>
-              <div className="text-sm text-gray-700"><strong>Médico:</strong> {n.payload.doctorName}</div>
-              <div className="text-sm text-gray-700"><strong>Data do exame:</strong> {(() => {
-                const d = n.payload.examDate;
-                if (!d) return '';
-                const [y, m, day] = d.split('-');
-                return `${day}-${m}-${y}`;
-              })()}</div>
+              {(() => {
+                const type = n.payload.documentType || 'result';
+                const isMedical = type === 'result' || type === 'certificate' || type === 'prescription';
+                return isMedical ? (
+                  <>
+                    <div className="text-sm text-gray-700"><strong>Médico:</strong> {n.payload.doctorName}</div>
+                    <div className="text-sm text-gray-700"><strong>Data do exame:</strong> {(() => {
+                      const d = n.payload.examDate;
+                      if (!d) return '';
+                      const [y, m, day] = d.split('-');
+                      return `${day}-${m}-${y}`;
+                    })()}</div>
+                  </>
+                ) : null;
+              })()}
               <div className="text-sm text-gray-500"><strong>Recebido em:</strong> {new Date(n.createdAt).toLocaleString()}</div>
+              <div className="text-sm text-gray-500"><strong>Origem:</strong> {n.payload.documentType ? 'Enviado por página pública' : 'Enviado por API'}</div>
               <div className="flex gap-3 mt-3">
                 <button
                   className="bg-[#1E40AF] hover:bg-[#2563EB] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -211,7 +244,7 @@ export default function NotificationCenter({ userId, onProfessionalCreated }: No
           notification={associateModal.notification}
           open={associateModal.open}
           onClose={() => setAssociateModal({ open: false, notification: null })}
-          onSuccess={fetchNotifications}
+          onSuccess={handleSuccess}
           userId={userId}
         />
         {/* Modal de criação */}

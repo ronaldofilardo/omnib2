@@ -1,16 +1,18 @@
 import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
-  testDir: './tests/e2e/specs',
-  fullyParallel: true,
+  testDir: './tests/e2e',
+  fullyParallel: false, // Desabilitar paralelismo para evitar problemas de estado
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1, // Apenas 1 worker para rodar testes em série
   reporter: 'html',
   globalSetup: './tests/setup/setup-tests.ts',
+  timeout: 60000, // 60s timeout global para cada teste
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
+    actionTimeout: 15000, // 15s para cada ação individual
   },
   projects: [
     {

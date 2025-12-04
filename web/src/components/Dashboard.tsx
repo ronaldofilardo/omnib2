@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Menu } from 'lucide-react'
 import Sidebar from './Sidebar'
 import { Timeline } from './Timeline'
@@ -13,6 +13,9 @@ import PersonalDataTab from './PersonalDataTab'
 import { PortalLaudos } from './PortalLaudos'
 import { EmissorDashboard } from './EmissorDashboard'
 import ExternalLabSubmit from './ExternalLabSubmit'
+import { ShareModal } from './ShareModal'
+import { EventsProvider, useEvents } from '../contexts/EventsContext'
+import type { HealthEvent as Event } from '../contexts/EventsContext'
 
 interface DashboardProps {
   onLogout: () => void
@@ -21,44 +24,29 @@ interface DashboardProps {
   user?: any;
 }
 
-// Definir tipo Professional
-interface Professional {
-  id: string
-  name: string
-  specialty: string
-  address?: string
-  contact?: string
-}
-
-// Definir tipo Event
-interface Event {
-  id: string
-  title: string
-  description?: string
-  date: string
-  type: string
-  professionalId: string
-  startTime?: string
-  endTime?: string
-  observation?: string
-  instructions?: boolean
-  status?: 'past' | 'current' | 'future'
-}
-
-export function Dashboard({ onLogout, userId, userRole, user }: DashboardProps) {
+function DashboardContent({ onLogout, userId, userRole, user }: DashboardProps) {
+  const { events, professionals, deleteEventOptimistic, refreshData } = useEvents()
   console.log('[Dashboard] Componente montado com:', { userId, userRole, user })
 
-  const [activeMenu, setActiveMenu] = useState(() => {
-    // Carregar aba ativa do localStorage ou usar padrão baseado no userRole
-    if (typeof window !== 'undefined') {
-      const savedMenu = localStorage.getItem('activeMenu')
-      if (savedMenu) return savedMenu
-    }
-    // Se for EMISSOR, iniciar com 'laudos', caso contrário 'timeline'
-    return userRole === 'EMISSOR' ? 'laudos' : 'timeline'
-  })
+  const [mounted, setMounted] = useState(false)
+  const [activeMenu, setActiveMenu] = useState<string>('')
   const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [selectedEventForShare, setSelectedEventForShare] = useState<Event | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+  // Inicializar activeMenu após componente montar no cliente
+  useEffect(() => {
+    setMounted(true)
+    // Carregar aba ativa do localStorage ou usar padrão baseado no userRole
+    const savedMenu = localStorage.getItem('activeMenu')
+    if (savedMenu) {
+      setActiveMenu(savedMenu)
+    } else {
+      // Se for EMISSOR, iniciar com 'laudos', caso contrário 'timeline'
+      setActiveMenu(userRole === 'EMISSOR' ? 'laudos' : 'timeline')
+    }
+  }, [userRole])
 
   // Debug: monitorar estado do modal
   useEffect(() => {
@@ -67,13 +55,6 @@ export function Dashboard({ onLogout, userId, userRole, user }: DashboardProps) 
       isNewEventModalOpen
     )
   }, [isNewEventModalOpen])
-  const [events, setEvents] = useState<Event[]>([])
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const isFetching = useRef(false)
-
-  // Estado único de profissionais
-  const [professionals, setProfessionals] = useState<Professional[]>([])
 
   // Debug: log quando activeMenu muda
   useEffect(() => {
@@ -84,64 +65,6 @@ export function Dashboard({ onLogout, userId, userRole, user }: DashboardProps) 
       console.log('[Dashboard] CalendarTab será renderizado com events:', events?.length, 'professionals:', professionals?.length)
     }
   }, [activeMenu, userId, events, professionals])
-
-  // Buscar profissionais do backend ao montar
-  useEffect(() => {
-    if (!userId) return
-    fetch(`/api/professionals?userId=${encodeURIComponent(userId)}`, { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setProfessionals(data)
-      })
-  }, [userId])
-
-  // Polling com retry exponencial otimizado
-  const fetchEventsWithRetry = useCallback(async (retryCount = 0) => {
-    if (!userId) return
-    try {
-      console.log('[Dashboard] Fetching events...')
-  const response = await fetch(`/api/events?userId=${encodeURIComponent(userId)}`, { cache: 'no-store' })
-      if (!response.ok) throw new Error('Failed to fetch events')
-      const data = await response.json()
-      console.log('[Dashboard] Events fetched:', data)
-      if (Array.isArray(data)) {
-        setHasMore(false)
-        setEvents(data)
-      } else {
-        setHasMore(false)
-        console.warn('[Dashboard] Events data is not an array:', data)
-      }
-    } catch (error) {
-      console.error('Error fetching events:', error)
-      if (retryCount < 3) {
-        const delay = Math.min(2000 * Math.pow(2, retryCount), 10000)
-        setTimeout(() => fetchEventsWithRetry(retryCount + 1), delay)
-      }
-    }
-  }, [userId])
-
-  // Buscar eventos do backend ao montar
-  useEffect(() => {
-    fetchEventsWithRetry(0)
-    setPage(1)
-  }, [fetchEventsWithRetry, userId])
-
-  // Polling automático para atualizar eventos a cada 2 segundos
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchEventsWithRetry(0)
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [fetchEventsWithRetry])
-
-  // Scroll infinito
-  // Desabilita scroll infinito, pois backend não suporta paginação
-
-  // Função para atualizar eventos após criar (otimizada)
-  const refreshEvents = useCallback(() => {
-    fetchEventsWithRetry(0)
-    setPage(1)
-  }, [fetchEventsWithRetry])
 
   const handleMenuClick = (menu: string) => {
     if (menu === 'logout') {
@@ -173,15 +96,9 @@ export function Dashboard({ onLogout, userId, userRole, user }: DashboardProps) 
     return `${dateStr} - ${weekday}`
   }
 
-  // Função para atualizar profissionais
-  const refreshProfessionals = useCallback(() => {
-    if (!userId) return
-    fetch(`/api/professionals?userId=${encodeURIComponent(userId)}`, { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setProfessionals(data)
-      })
-  }, [userId])
+
+  // Evita mismatch de hidratação: só renderiza conteúdo após mounted ser true
+  if (!mounted) return null
 
   return (
   <div className="flex bg-linear-to-b from-[#F8FAFC] to-white">
@@ -241,32 +158,27 @@ export function Dashboard({ onLogout, userId, userRole, user }: DashboardProps) 
             })()}
             {events && events.length > 0 ? (
               <Timeline
-                onUpdate={refreshEvents}
+                onUpdate={refreshData}
                 events={events}
                 professionals={professionals}
-                onView={(event: Event) => {
+                onView={(event) => {
                   // Implementar modal ou navegação para visualizar detalhes do evento
                   alert(`Visualizando evento: ${event.title}`)
                 }}
-                onFiles={(event: Event) => {
+                onFiles={(event) => {
                   // Implementar modal ou navegação para gerenciar arquivos do evento
                   alert(`Arquivos do evento: ${event.title}`)
                 }}
-                onEdit={(event: Event) => {
+                onShare={(event) => {
+                  setSelectedEventForShare(event)
+                  setShareModalOpen(true)
+                }}
+                onEdit={(event) => {
                   // Implementar modal de edição ou navegação para editar evento
                   alert(`Editando evento: ${event.title}`)
                 }}
-                onDelete={async (event: Event, deleteFiles: boolean) => {
-                  // Chama API para deletar evento (rota correta: body com id e deleteFiles)
-                  await fetch('/api/events', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: event.id, deleteFiles }),
-                  })
-                  // Atualiza eventos do backend
-                  await fetchEventsWithRetry()
-                  // Forçar atualização do hook useEventForm
-                  setTimeout(() => fetchEventsWithRetry(), 100)
+                onDelete={async (event, deleteFiles) => {
+                  await deleteEventOptimistic(event.id, deleteFiles)
                 }}
               />
             ) : (
@@ -279,11 +191,7 @@ export function Dashboard({ onLogout, userId, userRole, user }: DashboardProps) 
       )}
       {/* Professionals Tab */}
       {activeMenu === 'professionals' && (
-        <ProfessionalsTab
-          professionals={professionals}
-          setProfessionals={setProfessionals}
-          userId={userId}
-        />
+        <ProfessionalsTab userId={userId} />
       )}
       {/* Repository Tab */}
   {activeMenu === 'repositorio' && (
@@ -302,7 +210,7 @@ export function Dashboard({ onLogout, userId, userRole, user }: DashboardProps) 
       {/* Notification Center */}
     {activeMenu === 'notificacoes' && (
         <div className="flex-1 w-full md:w-[1160px] relative ml-0 md:ml-0">
-          <NotificationCenter userId={userId} onProfessionalCreated={refreshProfessionals} />
+          <NotificationCenter userId={userId} onProfessionalCreated={refreshData} />
         </div>
       )}
       {/* Personal Data Tab */}
@@ -339,32 +247,27 @@ export function Dashboard({ onLogout, userId, userRole, user }: DashboardProps) 
             })()}
             {events && events.length > 0 ? (
               <Timeline
-                onUpdate={refreshEvents}
+                onUpdate={refreshData}
                 events={events}
                 professionals={professionals}
-                onView={(event: Event) => {
+                onView={(event) => {
                   // Implementar modal ou navegação para visualizar detalhes do evento
                   alert(`Visualizando evento: ${event.title}`)
                 }}
-                onFiles={(event: Event) => {
+                onFiles={(event) => {
                   // Implementar modal ou navegação para gerenciar arquivos do evento
                   alert(`Arquivos do evento: ${event.title}`)
                 }}
-                onEdit={(event: Event) => {
+                onShare={(event) => {
+                  setSelectedEventForShare(event)
+                  setShareModalOpen(true)
+                }}
+                onEdit={(event) => {
                   // Implementar modal de edição ou navegação para editar evento
                   alert(`Editando evento: ${event.title}`)
                 }}
-                onDelete={async (event: Event, deleteFiles: boolean) => {
-                  // Chama API para deletar evento (rota correta: body com id e deleteFiles)
-                  await fetch('/api/events', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: event.id, deleteFiles }),
-                  })
-                  // Atualiza eventos do backend
-                  await fetchEventsWithRetry()
-                  // Forçar atualização do hook useEventForm
-                  setTimeout(() => fetchEventsWithRetry(), 100)
+                onDelete={async (event, deleteFiles) => {
+                  await deleteEventOptimistic(event.id, deleteFiles)
                 }}
               />
             ) : (
@@ -396,11 +299,23 @@ export function Dashboard({ onLogout, userId, userRole, user }: DashboardProps) 
           console.log('Dashboard: NewEventModal onOpenChange called with', open)
           setIsNewEventModalOpen(open)
         }}
-        professionals={professionals}
-        setProfessionals={setProfessionals}
         userId={userId}
       />
+
+      {/* Share Modal */}
+      {selectedEventForShare && (
+        <ShareModal
+          open={shareModalOpen}
+          onOpenChange={setShareModalOpen}
+          event={selectedEventForShare}
+        />
+      )}
+
       {/* Renderizar eventos reais do banco */}
     </div>
   )
+}
+
+export function Dashboard(props: DashboardProps) {
+  return <EventsProvider userId={props.userId}><DashboardContent {...props} /></EventsProvider>
 }

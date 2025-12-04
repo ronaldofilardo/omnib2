@@ -1,13 +1,14 @@
 {
   "functions": {
     "src/app/api/**/*.ts": {
-      "maxDuration": 30
+      "maxDuration": 20
     }
   },
   "regions": ["gru1"],
   "buildCommand": "pnpm check-deps && pnpm prisma:generate && next build",
   "installCommand": "pnpm install",
   "env": {
-    "PRISMA_GENERATE_DATAPROXY": "true"
+    "PRISMA_GENERATE_DATAPROXY": "true",
+    "RATE_LIMIT_DISABLED": "false"
   }
 }

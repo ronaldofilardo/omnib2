@@ -3,6 +3,19 @@ import { format, toZonedTime } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale/pt-BR'
 import { EventCard } from './EventCard'
 
+// Função auxiliar para formatar datas
+const formatDate = (dateString: string) => {
+  try {
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    return format(toZonedTime(date, 'America/Sao_Paulo'), 'EEEE, dd/MM', {
+      locale: ptBR,
+    })
+  } catch (e) {
+    return dateString
+  }
+}
+
 export interface Event {
   id: string
   title: string
@@ -15,7 +28,7 @@ export interface Event {
   observation?: string
   instructions?: boolean
   status?: 'past' | 'current' | 'future'
-  files?: { slot: string; name: string; url: string }[] // Array de objetos de arquivos
+  files?: { slot: string; name: string; url: string; physicalPath?: string; uploadDate?: string | null }[] // Array de objetos de arquivos
   doctorName?: string // Nome do médico solicitante externo
   professionalName?: string // Nome do profissional externo (outro sistema)
 }
@@ -29,11 +42,12 @@ interface Professional {
 }
 
 interface TimelineProps {
-  onUpdate?: () => void
+  onUpdate?: (force?: boolean) => void
   events: Event[]
   professionals: Professional[]
   onView?: (event: Event) => void
   onFiles?: (event: Event) => void
+  onShare?: (event: Event) => void
   onEdit?: (event: Event) => void
   onDelete?: (event: Event, deleteFiles: boolean) => void
 }
@@ -43,6 +57,7 @@ export const Timeline = memo(function Timeline({
   professionals,
   onView,
   onFiles,
+  onShare,
   onEdit,
   onDelete,
   onUpdate,
@@ -195,6 +210,7 @@ export const Timeline = memo(function Timeline({
                         status={status}
                         onView={() => onView?.(event)}
                         onFiles={() => onFiles?.(event)}
+                        onShare={() => onShare?.(event)}
                         onEdit={() => onEdit?.(event)}
                         onDelete={(deleteFiles) =>
                           onDelete?.(event, deleteFiles)

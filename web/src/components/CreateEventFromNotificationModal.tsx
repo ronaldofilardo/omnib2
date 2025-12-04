@@ -3,6 +3,36 @@
 // Função auxiliar para decodificar base64 em Node e browser (removida, não necessária)
 import React, { useState } from 'react';
 
+const getSlotForDocumentType = (documentType: string) => {
+  const slotMap = {
+    request: 'request',
+    authorization: 'authorization',
+    certificate: 'certificate',
+    result: 'result',
+    prescription: 'prescription',
+    invoice: 'invoice'
+  };
+  return slotMap[documentType as keyof typeof slotMap] || 'result';
+};
+
+// Função para detectar MIME type a partir do conteúdo base64
+function detectMimeType(base64Content: string): string {
+  if (base64Content.startsWith('/9j/4AAQSkZJRgABAQAAAQABAAD/')) {
+    return 'image/jpeg';
+  }
+  if (base64Content.startsWith('iVBORw0KGgo')) {
+    return 'image/png';
+  }
+  if (base64Content.startsWith('R0lGOD')) {
+    return 'image/gif';
+  }
+  if (base64Content.startsWith('UklGR')) {
+    return 'image/webp';
+  }
+  // Fallback para PDF se não reconhecer
+  return 'application/pdf';
+}
+
 interface Professional {
   id: string;
   name: string;
@@ -16,12 +46,14 @@ interface NotificationPayloadLab {
     fileName: string;
     fileContent: string;
   };
+  documentType?: string;
 }
 
 interface NotificationPayloadReport {
   reportId: string;
   title: string;
   protocol: string;
+  documentType?: string;
 }
 
 type NotificationUnion =
@@ -50,15 +82,38 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
     ? notification.payload.examDate
     : '';
 
+  // Definir horários baseados no horário atual para notificações de laudo
+  const getCurrentTimeBasedTimes = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // Hora de início: horário atual
+    const startHour = currentHour.toString().padStart(2, '0');
+    const startMinute = currentMinute.toString().padStart(2, '0');
+    const startTimeStr = `${startHour}:${startMinute}`;
+    
+    // Hora de fim: horário atual + 1 minuto
+    const endDate = new Date(now.getTime() + 60 * 1000); // +1 minuto
+    const endHour = endDate.getHours().toString().padStart(2, '0');
+    const endMinute = endDate.getMinutes().toString().padStart(2, '0');
+    const endTimeStr = `${endHour}:${endMinute}`;
+    
+    return { startTime: startTimeStr, endTime: endTimeStr };
+  };
+
+  const currentTimes = getCurrentTimeBasedTimes();
+
   const [title, setTitle] = useState(initialTitle);
   const [date, setDate] = useState(initialDate);
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('09:30');
+  const [startTime, setStartTime] = useState(isLabPayload(notification.payload) ? currentTimes.startTime : '09:00');
+  const [endTime, setEndTime] = useState(isLabPayload(notification.payload) ? currentTimes.endTime : '09:30');
   const [observation, setObservation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [selectedProfessional, setSelectedProfessional] = useState<string>('');
+  const [eventType, setEventType] = useState<'CONSULTA' | 'EXAME'>('EXAME');
 
   // Carregar profissionais ao abrir o modal
   React.useEffect(() => {
@@ -137,12 +192,31 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
       // 2. Criar evento com o arquivo base64 diretamente
       const files = [];
       if (isLabPayload(notification.payload)) {
+        const mimeType = detectMimeType(notification.payload.report.fileContent);
+        const slot = getSlotForDocumentType(notification.payload.documentType || 'result');
         files.push({
-          slot: 'result',
+          slot: slot,
           name: notification.payload.report.fileName,
-          url: `data:application/pdf;base64,${notification.payload.report.fileContent}`,
-          uploadDate: new Date().toISOString().split('T')[0]
+          url: `data:${mimeType};base64,${notification.payload.report.fileContent}`,
+          physicalPath: `data:${mimeType};base64,${notification.payload.report.fileContent}`,
+          uploadDate: new Date().toISOString()
         });
+      }
+
+      // Definir observação baseada no tipo de documento
+      let finalObservation = observation;
+      if (notification.payload.documentType) {
+        const documentTypeLabels = {
+          request: 'Solicitação enviada pelo app Omni',
+          authorization: 'Autorização enviada pelo app Omni',
+          certificate: 'Atestado enviada pelo app Omni',
+          result: 'Laudo enviado pelo app Omni',
+          prescription: 'Prescrição enviada pelo app Omni',
+          invoice: 'Nota Fiscal enviada pelo app Omni'
+        };
+        finalObservation = documentTypeLabels[notification.payload.documentType as keyof typeof documentTypeLabels] || 'Documento enviado pelo app Omni';
+      } else {
+        finalObservation = 'Laudo enviado pelo app Omni';
       }
 
       const res = await fetch(`/api/events?userId=${encodeURIComponent(userId)}`, {
@@ -151,11 +225,11 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
         body: JSON.stringify({
           title,
           description: 'laudo enviado pelo app Omni',
-          observation,
+          observation: finalObservation,
           date,
           startTime,
           endTime,
-          type: 'EXAME',
+          type: eventType,
           professionalId: finalProfessionalId,
           files,
           notificationId: notification.id
@@ -222,6 +296,22 @@ export default function CreateEventFromNotificationModal({ open, onClose, onSucc
       <div className="bg-white rounded-xl shadow-2xl border border-gray-200 min-w-[360px] max-w-full p-8 flex flex-col gap-4">
         <h3 className="text-lg font-bold text-[#1E40AF] mb-2">Criar Novo Evento a partir do Laudo</h3>
         {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
+        
+        {/* Dropdown de tipo de evento - apenas para documentos públicos */}
+        {notification.payload.documentType && (
+          <div className="flex flex-col gap-2 mb-2">
+            <label className="text-sm text-gray-700 font-medium">Tipo de Evento</label>
+            <select
+              value={eventType}
+              onChange={e => setEventType(e.target.value as 'CONSULTA' | 'EXAME')}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+            >
+              <option value="CONSULTA">Consulta</option>
+              <option value="EXAME">Exame</option>
+            </select>
+          </div>
+        )}
+        
         <div className="flex flex-col gap-2 mb-2">
           <label className="text-sm text-gray-700 font-medium">Título</label>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]" />

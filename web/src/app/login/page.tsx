@@ -1,14 +1,30 @@
 "use client";
-import { useState } from "react";
-import { CreateUserModal } from "@/components/CreateUserModal";
-import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
+import { useState, useEffect, Suspense } from "react";
+import { CreateUserModal } from "@/components/CreateUserModal";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+
+
+function LoginPageInner() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const emailParam = searchParams.get('email');
+    if (success === 'true') {
+      setSuccessMessage("Cadastro realizado com sucesso! Faça o login para continuar.");
+      if (emailParam) {
+        setEmail(emailParam);
+      }
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,7 +37,15 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (res.ok) {
-      router.push("/");
+      const data = await res.json();
+      const user = data.user;
+      if (user && user.role === 'ADMIN') {
+        router.push("/admin/dashboard");
+      } else if (user && user.role === 'EMISSOR') {
+        router.push("/laudos");
+      } else {
+        router.push("/timeline");
+      }
     } else {
       const data = await res.json();
       setError(data.error || "Erro ao autenticar");
@@ -35,7 +59,7 @@ export default function LoginPage() {
 
   return (
     <>
-  <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-gray-100 to-gray-200">
+      <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-gray-100 to-gray-200">
         <div className="bg-white p-10 rounded-xl shadow-lg w-full max-w-sm flex flex-col items-center">
           <h1 className="text-3xl font-extrabold mb-8 text-blue-900 tracking-tight">
             Login
@@ -80,6 +104,9 @@ export default function LoginPage() {
                 autoComplete="current-password"
               />
             </div>
+            {successMessage && (
+              <div className="text-green-600 text-sm text-center">{successMessage}</div>
+            )}
             {error && (
               <div className="text-red-600 text-sm text-center">{error}</div>
             )}
@@ -97,31 +124,31 @@ export default function LoginPage() {
             >
               Novo Usuário
             </button>
+            <Link
+              href="/enviar-documento"
+              className="bg-green-600 text-white rounded px-3 py-2 font-semibold hover:bg-green-700 transition text-lg text-center shadow-md"
+            >
+              Enviar um documento
+            </Link>
           </form>
         </div>
       </div>
       <CreateUserModal
         open={showCreateUser}
         onOpenChange={setShowCreateUser}
-        onRegistered={async ({ email, name }) => {
-          // Login automático após cadastro
-          setLoading(true);
-          setError("");
-          const res = await fetch("/api/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password: "" }), // senha não está disponível, pedir para digitar?
-          });
-          setLoading(false);
-          setShowCreateUser(false);
-          if (res.ok) {
-            router.push("/");
-          } else {
-            const data = await res.json();
-            setError(data.error || "Erro ao autenticar novo usuário");
-          }
+        onRegistered={({ email }) => {
+          // Redirecionar para login com mensagem de sucesso e e-mail preenchido
+          router.push(`/login?success=true&email=${encodeURIComponent(email)}`);
         }}
       />
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   );
 }

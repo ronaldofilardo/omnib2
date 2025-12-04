@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
 import App from '../../../src/components/App'
 // Mock do fetch global
@@ -25,7 +25,7 @@ beforeAll(() => {
     // fallback para outros endpoints
     return Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
   })
-  global.fetch = mockFetch
+  ;(globalThis as any).fetch = mockFetch
 })
 
 afterAll(() => {
@@ -106,18 +106,22 @@ describe('App', () => {
     const passwordInput = screen.getByPlaceholderText('Senha')
     fireEvent.change(passwordInput, { target: { value: 'password123' } })
     const loginButton = screen.getByText('Entrar')
-    fireEvent.click(loginButton)
+    await act(async () => {
+      fireEvent.click(loginButton)
+    })
 
     // Aguarda o Dashboard aparecer (login bem-sucedido)
     await screen.findByText('Minha Timeline')
     expect(screen.queryByText('Omni Saúde')).not.toBeInTheDocument()
   })
 
-  it('opens create user modal when Novo Usuário is clicked', () => {
+  it('opens create user modal when Novo Usuário is clicked', async () => {
     render(<App />)
 
     const newUserButton = screen.getByText('Novo Usuário')
-    fireEvent.click(newUserButton)
+    await act(async () => {
+      fireEvent.click(newUserButton)
+    })
 
     // Modal should be open, but since it's a separate component, we check if the modal is rendered
     expect(screen.getByText('Omni Saúde')).toBeInTheDocument()
@@ -135,12 +139,16 @@ describe('App', () => {
     const passwordInput = screen.getByPlaceholderText('Senha')
     fireEvent.change(passwordInput, { target: { value: 'password123' } })
     const loginButton = screen.getByText('Entrar')
-    fireEvent.click(loginButton)
+    await act(async () => {
+      fireEvent.click(loginButton)
+    })
     await screen.findByText('Minha Timeline')
 
     // Simula clique no botão de sair do Sidebar
     const sairButton = screen.getByText('Sair')
-    fireEvent.click(sairButton)
+    await act(async () => {
+      fireEvent.click(sairButton)
+    })
 
     // Deve voltar para tela de login
     expect(screen.getByText('Omni Saúde')).toBeInTheDocument()
@@ -159,12 +167,16 @@ describe('App', () => {
     const passwordInput = screen.getByPlaceholderText('Senha')
     fireEvent.change(passwordInput, { target: { value: 'password123' } })
     const loginButton = screen.getByText('Entrar')
-    fireEvent.click(loginButton)
+    await act(async () => {
+      fireEvent.click(loginButton)
+    })
     await screen.findByText('Minha Timeline')
 
     // Simula logout
     const sairButton = screen.getByText('Sair')
-    fireEvent.click(sairButton)
+    await act(async () => {
+      fireEvent.click(sairButton)
+    })
 
     // Deve limpar os campos
     expect(screen.getByPlaceholderText('usuário@email.com')).toHaveValue('')
@@ -249,13 +261,15 @@ describe('App', () => {
     )
   })
 
-  it('handles empty login attempt', () => {
+  it('handles empty login attempt', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
     render(<App />)
 
     const loginButton = screen.getByText('Entrar')
-    fireEvent.click(loginButton)
+    await act(async () => {
+      fireEvent.click(loginButton)
+    })
 
     expect(consoleSpy).toHaveBeenCalledWith('Login attempt:', {
       email: '',
@@ -265,7 +279,7 @@ describe('App', () => {
     consoleSpy.mockRestore()
   })
 
-  it('maintains form values when switching between login and modal', () => {
+  it('maintains form values when switching between login and modal', async () => {
     render(<App />)
 
     const emailInput = screen.getByPlaceholderText('usuário@email.com')
@@ -276,7 +290,9 @@ describe('App', () => {
 
     // Open modal
     const newUserButton = screen.getByText('Novo Usuário')
-    fireEvent.click(newUserButton)
+    await act(async () => {
+      fireEvent.click(newUserButton)
+    })
 
     // Values should still be there
     expect(emailInput).toHaveValue('test@example.com')

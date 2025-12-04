@@ -73,7 +73,7 @@ export default function Sidebar({ userRole = '', activeMenu = '', onMenuClick, u
               <Link
                 key={item.id}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${isActive ? 'bg-[#10B981] text-white' : 'text-[#374151] hover:bg-gray-50'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${isActive ? 'bg-[#10B981] text-white' : 'text-black hover:bg-gray-50'}`}
                 onClick={onMenuClick ? (e) => {
                   e.preventDefault();
                   onMenuClick(item.id);
@@ -94,7 +94,7 @@ export default function Sidebar({ userRole = '', activeMenu = '', onMenuClick, u
                 onClick={() => {
                   if (onMenuClick) onMenuClick(item.id);
                 }}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${isActive ? 'bg-[#10B981] text-white' : 'text-[#374151] hover:bg-gray-50'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${isActive ? 'bg-[#10B981] text-white' : 'text-black hover:bg-gray-50'}`}
               >
                 <span className="relative">
                   <Icon className="w-5 h-5" strokeWidth={2} />

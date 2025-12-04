@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
+import { v4 as uuidv4 } from 'uuid'
+import { createJsonResponse } from '@/lib/json-serializer'
 
 // Usuário padrão
 const DEFAULT_USER_EMAIL = 'user@email.com'
@@ -14,7 +17,11 @@ async function getDefaultUserId() {
 
 async function GET_SPECIALTIES() {
   try {
-    const userId = await getDefaultUserId()
+    const user = await auth()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+    const userId = user.id
     const professionals = await prisma.professional.findMany({
       where: { userId },
     })
@@ -34,8 +41,12 @@ async function GET_SPECIALTIES() {
 
 export async function PUT(req: Request) {
   try {
+    const user = await auth()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+    const userId = user.id
     const body = await req.json()
-    const userId = body.userId || await getDefaultUserId()
     const { id, name, specialty, address, contact } = body
     if (!id || !name || !specialty) {
       return NextResponse.json(
@@ -50,7 +61,7 @@ export async function PUT(req: Request) {
       },
       data: { name, specialty, address, contact },
     })
-    return NextResponse.json(professional)
+    return createJsonResponse(professional, { status: 200 })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return NextResponse.json({ error: message }, { status: 500 })
@@ -67,7 +78,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const userId = url.searchParams.get('userId') || await getDefaultUserId()
+    const user = await auth()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+    const userId = user.id
     const professionals = await prisma.professional.findMany({
       where: { userId },
     })
@@ -80,8 +95,12 @@ export async function GET(request: Request) {
 
 export async function POST(req: Request) {
   try {
+    const user = await auth()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+    const userId = user.id
     const body = await req.json()
-    const userId = body.userId || await getDefaultUserId()
     let { name, specialty, address, contact } = body
     if (!name) {
       return NextResponse.json(
@@ -95,7 +114,7 @@ export async function POST(req: Request) {
     const professional = await prisma.professional.create({
       data: { name, specialty, address, contact, userId },
     })
-    return NextResponse.json(professional, { status: 201 })
+    return createJsonResponse(professional, { status: 201 })
   } catch (error) {
     // Log detalhado para debug
     console.error('Erro ao criar profissional:', error)
@@ -106,16 +125,52 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const user = await auth()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+    const userId = user.id
     // Garante que a URL seja absoluta
     const url = req.url.startsWith('http') ? new URL(req.url) : new URL(req.url, 'http://localhost')
     const id = url.searchParams.get('id')
-    const userId = url.searchParams.get('userId') || await getDefaultUserId()
     if (!id) {
       return NextResponse.json(
         { error: 'ID do profissional é obrigatório.' },
         { status: 400 }
       )
     }
+
+    // Buscar o profissional para obter o nome
+    const professional = await prisma.professional.findUnique({
+      where: { id },
+      include: { events: { include: { files: true } } }
+    })
+    if (!professional) {
+      return NextResponse.json({ error: 'Profissional não encontrado.' }, { status: 404 })
+    }
+
+    // Para cada evento, mover arquivos para órfãos
+    for (const event of professional.events) {
+      for (const file of event.files) {
+        await prisma.files.create({
+          data: {
+            id: uuidv4(),
+            eventId: event.id,
+            professionalId: null, // órfão
+            slot: file.slot,
+            name: file.name,
+            url: file.url,
+            physicalPath: file.physicalPath,
+            uploadDate: file.uploadDate,
+            expiryDate: file.expiryDate,
+            isOrphaned: true,
+            orphanedReason: `Profissional deletado: ${professional.name}`
+          }
+        })
+      }
+    }
+
+    // Agora deletar o profissional (eventos e arquivos serão deletados, mas órfãos já foram preservados)
     await prisma.professional.delete({
       where: {
         id,

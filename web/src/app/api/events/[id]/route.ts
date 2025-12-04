@@ -24,6 +24,7 @@ export async function GET(
       where: { id },
       include: {
         professional: true,
+        files: true,
       },
     })
 
@@ -97,8 +98,8 @@ export async function PUT(
       files: files ? 'presente' : 'ausente',
     })
 
-    // Buscar evento existente
-    const existing = await prisma.healthEvent.findUnique({ where: { id } })
+    // Buscar evento existente com arquivos
+    const existing = await prisma.healthEvent.findUnique({ where: { id }, include: { files: true } })
     if (!existing) {
       console.warn(`[API Events] Evento não encontrado para atualização: ${id}`)
       return NextResponse.json(
@@ -118,7 +119,9 @@ export async function PUT(
 
     // Validar e converter data se fornecida
     if (date) {
-      const validation = validateEventDateTime(date, startTime || existing.startTime, endTime || existing.endTime)
+      const startTimeStr = startTime || (existing.startTime ? existing.startTime.toISOString().split('T')[1].substring(0,5) : null)
+      const endTimeStr = endTime || (existing.endTime ? existing.endTime.toISOString().split('T')[1].substring(0,5) : null)
+      const validation = validateEventDateTime(date, startTimeStr, endTimeStr)
       if (!validation.isValid) {
         const errorMessages = Object.values(validation.errors).join(' ')
         console.warn(`[API Events] Validação falhou na atualização:`, validation.errors)

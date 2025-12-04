@@ -22,7 +22,8 @@
 		"react-day-picker": "^9.11.1",
 		"react-dom": "18.3.1",
 		"react-hook-form": "^7.65.0",
-		"recharts": "^3.3.0"
+		"recharts": "^3.3.0",
+		"resend": "^6.5.2"
 	},
 	"devDependencies": {
 		"@testing-library/jest-dom": "^6.9.1",
@@ -32,11 +33,12 @@
 		"@vitest/coverage-c8": "^0.33.0",
 		"happy-dom": "^20.0.8",
 		"jsdom": "^27.0.1",
-		"playwright": "^1.56.1",
+		"node-fetch": "^3.3.2",
 		"prisma": "^6.18.0",
 		"vitest": "^4.0.3"
 	},
 	"scripts": {
-		"autogit": "git add . && git commit -m \"${npm_config_msg:-Commit automático}\" && git push"
+		"autogit": "git add . && git commit -m \"${npm_config_msg:-Commit automático}\" && git push",
+		"test": "cd web && pnpm test"
 	}
 }

@@ -7,6 +7,7 @@ import { Button } from './ui/button'
 import { User, MapPin, Phone, Calendar, Edit, Trash2, Star } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { formatTime } from '../lib/utils'
 
 interface HealthEvent {
   id: string
@@ -155,7 +156,7 @@ export default function ProfessionalDetail({ professional }: ProfessionalDetailP
                           </div>
                           <div className="flex items-center gap-4 text-sm text-[#6B7280]">
                             <span>{formatDate(event.date)}</span>
-                            <span>{event.startTime} - {event.endTime}</span>
+                            <span>{event.startTime && event.endTime ? `${formatTime(event.startTime)} - ${formatTime(event.endTime)}` : 'Horário não definido'}</span>
                           </div>
                         </div>
                         <Button variant="outline" size="sm">

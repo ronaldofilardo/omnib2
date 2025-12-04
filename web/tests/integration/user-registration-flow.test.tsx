@@ -32,6 +32,8 @@ describe('User Registration Flow - Integration', () => {
     const phoneInput = screen.getByPlaceholderText('Telefone');
     const emailInput = screen.getByPlaceholderText('user@email.com');
     const passwordInput = screen.getByPlaceholderText('••••••••');
+    const privacyCheckbox = screen.getByRole('checkbox', { name: /Política de Privacidade/i });
+    const termsCheckbox = screen.getByRole('checkbox', { name: /Termos de Uso/i });
     const createButton = screen.getByText('Criar Usuário');
 
     fireEvent.change(fullNameInput, { target: { value: 'João Silva Santos' } });
@@ -39,6 +41,8 @@ describe('User Registration Flow - Integration', () => {
     fireEvent.change(phoneInput, { target: { value: '11987654321' } });
     fireEvent.change(emailInput, { target: { value: 'joao.santos@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'SecurePass123!' } });
+    fireEvent.click(privacyCheckbox);
+    fireEvent.click(termsCheckbox);
 
     // Submit the form
     fireEvent.click(createButton);
@@ -54,6 +58,8 @@ describe('User Registration Flow - Integration', () => {
           name: 'João Silva Santos',
             cpf: '123.456.789-01', // agora espera formatado
           telefone: '(11) 98765-4321',
+          acceptedPrivacyPolicy: true,
+          acceptedTermsOfUse: true,
         }),
       });
     });
@@ -63,29 +69,63 @@ describe('User Registration Flow - Integration', () => {
       email: 'joao.santos@example.com',
       name: 'João Silva Santos',
     });
-    expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+
+    // Wait for the modal to close automatically after success (2.5s timeout)
+    await waitFor(() => {
+      expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+    }, { timeout: 3000 });
   });
 
   it('handles validation errors during registration', async () => {
+    // Mock fetch to return server error
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      json: () => Promise.resolve({ error: 'Erro de servidor' }),
+    });
+
     render(<CreateUserModal {...defaultProps} />);
 
     const createButton = screen.getByText('Criar Usuário');
 
-    // Try to submit without filling required fields
-    fireEvent.click(createButton);
+    // Initially, button should be disabled when no fields are filled
+    expect(createButton).toBeDisabled();
 
-    await waitFor(() => {
-      expect(screen.getByText('E-mail, senha e CPF são obrigatórios')).toBeInTheDocument();
-    });
-
-    // Fill only email, no password or CPF
+    // Fill only email, no password or CPF - button should still be disabled
     const emailInput = screen.getByPlaceholderText('user@email.com');
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
 
+    expect(createButton).toBeDisabled();
+
+    // Fill password but no CPF - button should still be disabled
+    const passwordInput = screen.getByPlaceholderText('••••••••');
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+
+    expect(createButton).toBeDisabled();
+
+    // Fill CPF but no checkboxes - button should still be disabled
+    const cpfInput = screen.getByPlaceholderText('CPF *');
+    fireEvent.change(cpfInput, { target: { value: '123.456.789-01' } });
+
+    expect(createButton).toBeDisabled();
+
+    // Check privacy policy but not terms - button should still be disabled
+    const privacyCheckbox = screen.getByRole('checkbox', { name: /Política de Privacidade/i });
+    fireEvent.click(privacyCheckbox);
+
+    expect(createButton).toBeDisabled();
+
+    // Check terms - now button should be enabled
+    const termsCheckbox = screen.getByRole('checkbox', { name: /Termos de Uso/i });
+    fireEvent.click(termsCheckbox);
+
+    expect(createButton).toBeEnabled();
+
+    // Now try to submit with all required fields filled
     fireEvent.click(createButton);
 
+    // Should show an error message
     await waitFor(() => {
-      expect(screen.getByText('E-mail, senha e CPF são obrigatórios')).toBeInTheDocument();
+      expect(screen.getByText(/Erro de servidor/i)).toBeInTheDocument();
     });
   });
 
@@ -101,18 +141,23 @@ describe('User Registration Flow - Integration', () => {
     const cpfInput = screen.getByPlaceholderText('CPF *');
     const emailInput = screen.getByPlaceholderText('user@email.com');
     const passwordInput = screen.getByPlaceholderText('••••••••');
+    const privacyCheckbox = screen.getByRole('checkbox', { name: /Política de Privacidade/i });
+    const termsCheckbox = screen.getByRole('checkbox', { name: /Termos de Uso/i });
     const createButton = screen.getByText('Criar Usuário');
 
     fireEvent.change(fullNameInput, { target: { value: 'Maria Oliveira' } });
     fireEvent.change(cpfInput, { target: { value: '98765432100' } });
     fireEvent.change(emailInput, { target: { value: 'maria@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'Password123!' } });
+    fireEvent.click(privacyCheckbox);
+    fireEvent.click(termsCheckbox);
 
     fireEvent.click(createButton);
 
+    // Wait for the error message to appear
     await waitFor(() => {
       expect(screen.getByText('CPF já cadastrado no sistema')).toBeInTheDocument();
-    });
+    }, { timeout: 2000 });
 
     // Modal should remain open on error
     expect(mockOnOpenChange).not.toHaveBeenCalled();
@@ -128,18 +173,23 @@ describe('User Registration Flow - Integration', () => {
     const cpfInput = screen.getByPlaceholderText('CPF *');
     const emailInput = screen.getByPlaceholderText('user@email.com');
     const passwordInput = screen.getByPlaceholderText('••••••••');
+    const privacyCheckbox = screen.getByRole('checkbox', { name: /Política de Privacidade/i });
+    const termsCheckbox = screen.getByRole('checkbox', { name: /Termos de Uso/i });
     const createButton = screen.getByText('Criar Usuário');
 
     fireEvent.change(fullNameInput, { target: { value: 'Pedro Costa' } });
     fireEvent.change(cpfInput, { target: { value: '12345678901' } });
     fireEvent.change(emailInput, { target: { value: 'pedro@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'Secure123!' } });
+    fireEvent.click(privacyCheckbox);
+    fireEvent.click(termsCheckbox);
 
     fireEvent.click(createButton);
 
+    // Wait for the error message to appear
     await waitFor(() => {
-      expect(screen.getByText('Erro ao criar usuário')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    }, { timeout: 2000 });
   });
 
   it('prevents multiple submissions while processing', async () => {
@@ -151,19 +201,23 @@ describe('User Registration Flow - Integration', () => {
     const cpfInput = screen.getByPlaceholderText('CPF *');
     const emailInput = screen.getByPlaceholderText('user@email.com');
     const passwordInput = screen.getByPlaceholderText('••••••••');
+    const privacyCheckbox = screen.getByRole('checkbox', { name: /Política de Privacidade/i });
+    const termsCheckbox = screen.getByRole('checkbox', { name: /Termos de Uso/i });
     const createButton = screen.getByText('Criar Usuário');
 
     fireEvent.change(fullNameInput, { target: { value: 'Ana Pereira' } });
     fireEvent.change(cpfInput, { target: { value: '12345678901' } });
     fireEvent.change(emailInput, { target: { value: 'ana@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'TestPass123!' } });
+    fireEvent.click(privacyCheckbox);
+    fireEvent.click(termsCheckbox);
 
     fireEvent.click(createButton);
 
     // Button should show loading state
     await waitFor(() => {
       expect(screen.getByText('Criando...')).toBeInTheDocument();
-    });
+    }, { timeout: 2000 });
 
     // Try to click again - should not trigger another call
     fireEvent.click(screen.getByText('Criando...'));
