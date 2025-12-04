@@ -513,9 +513,9 @@ export function EventCard({
                                 alert('Apenas arquivos de imagem são aceitos (PNG, JPG, JPEG, GIF, etc.)')
                                 return
                               }
-                              // Validação de tamanho (deve ser menor que 2KB)
-                              if (file.size >= 2 * 1024) {
-                                alert('O arquivo deve ter menos de 2KB.')
+                              // Validação de tamanho (deve ser menor que 2MB)
+                              if (file.size >= 2 * 1024 * 1024) {
+                                alert('O arquivo deve ter menos de 2MB.')
                                 return
                               }
                               const newSlots = [...fileSlots]

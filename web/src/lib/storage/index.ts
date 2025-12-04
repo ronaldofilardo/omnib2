@@ -6,9 +6,7 @@ export { getCurrentStorageConfig, isLargeFileSupportEnabled, getMaxFileSize, isM
 
 // Providers
 export { LocalStorageProvider } from './LocalStorageProvider'
-export { VercelCompatibleStorageProvider } from './VercelCompatibleStorageProvider'
-export { VercelBlobStorageProvider } from './VercelBlobStorageProvider'
-export { BackBlazeStorageProvider } from './BackBlazeStorageProvider'
+export { CloudinaryStorageProvider } from './CloudinaryStorageProvider'
 
 // Manager
 export { StorageManager, storageManager } from './StorageManager'

@@ -4,8 +4,9 @@
 import { useEffect, useState } from 'react';
 
 interface Document {
-  protocol: string;
-  patientName: string;
+  id?: string;
+  protocol: string | null;
+  patientName: string | null;
   emitterCnpj: string | null;
   createdAt: string;
   fileName: string;
@@ -102,9 +103,9 @@ export function ReportsDashboard() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {documents.map((doc, idx) => (
-              <tr key={doc.protocol || idx}>
+              <tr key={`${doc.protocol || 'no-protocol'}-${doc.fileName}-${idx}`}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {doc.protocol}
+                  {doc.protocol || '—'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {doc.fileName}

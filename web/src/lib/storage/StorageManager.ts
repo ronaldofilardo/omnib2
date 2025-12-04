@@ -1,7 +1,6 @@
 import { StorageProvider } from './StorageProvider'
 import { LocalStorageProvider } from './LocalStorageProvider'
-import { VercelCompatibleStorageProvider } from './VercelCompatibleStorageProvider'
-import { VercelBlobStorageProvider } from './VercelBlobStorageProvider'
+import { CloudinaryStorageProvider } from './CloudinaryStorageProvider'
 import { getCurrentStorageConfig } from './config'
 
 export class StorageManager {
@@ -24,18 +23,10 @@ export class StorageManager {
 
     switch (config.provider) {
       case 'local':
-        // Em produção, usar Vercel Blob
-        if (process.env.NODE_ENV === 'production') {
-          return new VercelBlobStorageProvider()
-        }
         return new LocalStorageProvider()
 
-      case 'vercel-compatible':
-        return new VercelBlobStorageProvider()
-
-      case 'b2':
-        // TODO: Implementar B2StorageProvider quando necessário
-        return new LocalStorageProvider()
+      case 'cloudinary':
+        return new CloudinaryStorageProvider()
 
       default:
         return new LocalStorageProvider()

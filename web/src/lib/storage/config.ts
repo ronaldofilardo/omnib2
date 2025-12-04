@@ -3,27 +3,12 @@ export interface StorageConfig {
   allowedMimeTypes: string[]
   uploadTimeout: number
   allowLargeFiles: boolean
-  provider: 'local' | 'b2' | 'vercel-compatible'
+  provider: 'local' | 'cloudinary' | 'vercel-compatible'
 }
 
 export const STORAGE_CONFIGS: Record<string, StorageConfig> = {
   development: {
-    maxFileSize: 10 * 1024 * 1024, // 10MB em desenvolvimento
-    allowedMimeTypes: [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ],
-    uploadTimeout: 30000, // 30s
-    allowLargeFiles: true,
-    provider: 'local'
-  },
-  production: {
-    maxFileSize: 5 * 1024 * 1024, // 5MB para Vercel Blob
+    maxFileSize: 2 * 1024 * 1024, // 2MB padronizado
     allowedMimeTypes: [
       'image/jpeg',
       'image/png',
@@ -33,7 +18,20 @@ export const STORAGE_CONFIGS: Record<string, StorageConfig> = {
     ],
     uploadTimeout: 30000, // 30s
     allowLargeFiles: false,
-    provider: 'vercel-compatible' // Usar Vercel Blob
+    provider: 'local'
+  },
+  production: {
+    maxFileSize: 2 * 1024 * 1024, // 2MB para compatibilidade com conta free Vercel
+    allowedMimeTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'application/pdf',
+    ],
+    uploadTimeout: 30000, // 30s
+    allowLargeFiles: false,
+  provider: 'vercel-compatible' // Usar Vercel Blob
   },
   test: {
     maxFileSize: 1 * 1024 * 1024, // 1MB para testes
