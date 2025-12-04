@@ -95,7 +95,13 @@ export async function GET(
       return NextResponse.json({ error: 'Acesso negado ao arquivo' }, { status: 403 })
     }
 
-    // Usar physicalPath
+    // Verificar se é URL externa (Vercel Blob) ou local
+    if (file.url.startsWith('http')) {
+      // Redirecionar para URL externa
+      return NextResponse.redirect(file.url)
+    }
+
+    // Para arquivos locais (desenvolvimento)
     const filePath = path.join(process.cwd(), 'public', file.physicalPath)
 
     // Prevenir acesso a arquivos com physicalPath inválido

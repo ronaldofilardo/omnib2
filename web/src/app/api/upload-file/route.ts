@@ -12,6 +12,7 @@ import { auth } from '@/lib/auth'
 import { uploadRateLimiter } from '@/lib/utils/rateLimit'
 import { logSecurityEvent } from '@/lib/services/auditService'
 import { scanForViruses } from '@/lib/utils/virusScan'
+import { storageManager } from '@/lib/storage'
 
 const uploadConfig = getUploadConfig()
 
@@ -116,22 +117,22 @@ export async function POST(req: Request) {
       console.warn(`[UPLOAD-FILE WARNING] Arquivo de ${file.size} bytes se aproxima do limite de produção (2KB). Considere otimizar para compatibilidade com Vercel.`)
     }
 
-    // Salvar arquivo localmente (exemplo)
+    // Salvar arquivo usando o storage manager
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', eventId)
-    await fs.mkdir(uploadDir, { recursive: true })
-
-    // Gera nome de arquivo seguro para prevenir path traversal
     const safeFilename = generateSafeFilename(file.name, file.type)
-    const filePath = path.join(uploadDir, `${slot}-${safeFilename}`)
-    await fs.writeFile(filePath, buffer)
+    const uploadResult = await storageManager.upload(file, {
+      eventId,
+      slot,
+      filename: `${slot}-${safeFilename}`
+    })
 
-    // Retornar URL do arquivo salvo
-    const fileUrl = `/uploads/${eventId}/${slot}-${safeFilename}`
+    if (!uploadResult.success) {
+      console.error('[UPLOAD-FILE] Falha no upload:', uploadResult.error)
+      return NextResponse.json({ error: uploadResult.error || 'Falha no upload' }, { status: 500 })
+    }
 
-    // Remove arquivo antigo do mesmo slot para o evento
-    await prisma.files.deleteMany({ where: { eventId, slot } })
+    const fileUrl = uploadResult.url
     const fileId = uuidv4()
 
     // Verificar vírus/malware
@@ -165,8 +166,8 @@ export async function POST(req: Request) {
         eventId,
         slot,
         name: safeFilename,
-        url: `/api/files/${fileId}/download`,
-        physicalPath: `/uploads/${eventId}/${slot}-${safeFilename}`,
+        url: fileUrl, // URL do blob
+        physicalPath: uploadResult.fileId, // ID do arquivo no storage
         uploadDate: new Date().toISOString(),
         fileHash,
       }
@@ -179,7 +180,7 @@ export async function POST(req: Request) {
       create: { id: 'singleton', totalUploadBytes: BigInt(file.size) }
     })
 
-    return NextResponse.json({ success: true, url: `/api/files/${fileId}/download`, name: safeFilename })
+    return NextResponse.json({ success: true, url: fileUrl, name: safeFilename })
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }

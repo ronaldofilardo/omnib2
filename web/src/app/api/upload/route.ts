@@ -7,6 +7,7 @@ import { getUploadConfig, getFileTooLargeError, isMimeTypeAllowed } from '@/lib/
 import { auth } from '@/lib/auth'
 import { uploadRateLimiter } from '@/lib/utils/rateLimit'
 import { logSecurityEvent } from '@/lib/services/auditService'
+import { storageManager } from '@/lib/storage'
 
 const uploadConfig = getUploadConfig()
 
@@ -107,18 +108,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Criar diretório se não existir
-    await mkdir(UPLOAD_DIR, { recursive: true })
-
-    // Gerar nome único para o arquivo
+    // Salvar arquivo usando storage manager
     const fileExtension = file.name.split('.').pop()
     const fileName = `${randomUUID()}.${fileExtension}`
-    const filePath = join(UPLOAD_DIR, fileName)
+    const uploadResult = await storageManager.upload(file, {
+      filename: fileName
+    })
 
-    // Salvar arquivo
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    if (!uploadResult.success) {
+      console.error('[UPLOAD] Falha no upload:', uploadResult.error)
+      return NextResponse.json({ error: uploadResult.error || 'Falha no upload' }, { status: 500 })
+    }
+
+    const fileUrl = uploadResult.url
 
     // Atualizar métricas de upload
     await prisma.adminMetrics.upsert({
@@ -126,12 +128,6 @@ export async function POST(req: NextRequest) {
       update: { totalUploadBytes: { increment: BigInt(file.size) } },
       create: { id: 'singleton', totalUploadBytes: BigInt(file.size) }
     })
-
-    // Retornar URL do arquivo com data de upload
-    // Em produção (Vercel), usar URL relativa já que arquivos são servidos via API
-    const fileUrl = process.env.NODE_ENV === 'production'
-      ? `/api/uploads/${fileName}` // Servir via API route na Vercel
-      : `/uploads/${fileName}` // Servir diretamente do public na versão local
 
     const uploadDate = new Date().toISOString() // ISO-8601 completo
 
