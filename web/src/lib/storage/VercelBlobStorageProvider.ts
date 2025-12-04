@@ -7,7 +7,6 @@ export class VercelBlobStorageProvider implements StorageProvider {
       const filename = options.filename || file.name
       const result = await put(filename, file, {
         access: 'public',
-        handleUploadUrl: options.handleUploadUrl,
       })
 
       return {
@@ -15,10 +14,11 @@ export class VercelBlobStorageProvider implements StorageProvider {
         fileId: result.url, // Use URL as fileId
         url: result.url,
         metadata: {
-          filename: file.name,
+          id: result.url, // Use URL as ID
+          name: file.name,
           size: file.size,
           mimeType: file.type,
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
           url: result.url,
         } as FileMetadata,
       }
@@ -53,10 +53,11 @@ export class VercelBlobStorageProvider implements StorageProvider {
     try {
       const result = await head(fileId)
       return {
-        filename: result.pathname,
+        id: fileId,
+        name: result.pathname,
         size: result.size,
         mimeType: result.contentType || 'application/octet-stream',
-        uploadedAt: result.uploadedAt,
+        uploadedAt: result.uploadedAt.toISOString(),
         url: fileId,
       }
     } catch (error) {

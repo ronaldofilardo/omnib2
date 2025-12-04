@@ -15,6 +15,7 @@ export interface UploadOptions {
   professionalId?: string
   slot?: string
   expiryDate?: string
+  filename?: string
 }
 
 export interface StorageResult {
