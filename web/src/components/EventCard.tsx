@@ -648,21 +648,28 @@ export function EventCard({
                         }
 
                         setShowFilesModal(false)
-                        onUpdate?.(true) // Forçar refresh para sincronizar com banco
+                        // Forçar refresh imediato para sincronizar com banco
+                        if (onUpdate) {
+                          await onUpdate(true)
+                        }
+                        window.location.reload() // Força reload completo para garantir sincronização
                       } else {
                         const errorText = await response.text()
                         console.error('Erro ao salvar arquivos:', errorText)
-                        // Opcional: alertar o usuário
-                        // alert('Erro ao salvar arquivos: ' + errorText)
+                        alert('Erro ao salvar arquivos. Tente novamente.')
                       }
                     } catch (error) {
                       console.error('Erro ao salvar arquivos:', error)
+                      alert('Erro ao salvar arquivos. Tente novamente.')
                     }
                   } else {
                     // Fechar modal e forçar refresh mesmo sem novos uploads
                     // (pode ter havido deleções que já foram persistidas)
                     setShowFilesModal(false)
-                    onUpdate?.(true)
+                    if (onUpdate) {
+                      await onUpdate(true)
+                    }
+                    window.location.reload() // Força reload completo
                   }
                 }}
               >

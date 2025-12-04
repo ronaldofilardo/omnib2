@@ -304,9 +304,22 @@ export async function PUT(req: Request) {
           return NextResponse.json({ error: 'Evento não encontrado' }, { status: 404 })
         }
 
-        // Processar arquivos (criar novos, não deletar existentes)
+        // Processar arquivos (criar novos, substituir existentes por slot)
         const filesArr = Array.isArray(files) ? files : [];
         if (filesArr.length > 0) {
+          // Primeiro, deletar arquivos existentes dos slots que serão atualizados
+          const slotsToUpdate = [...new Set(filesArr.map((f: any) => f.slot))];
+          
+          if (slotsToUpdate.length > 0) {
+            console.log(`[API Events] Deletando arquivos órfãos dos slots: ${slotsToUpdate.join(', ')}`);
+            await prisma.files.deleteMany({
+              where: {
+                eventId: id,
+                slot: { in: slotsToUpdate }
+              }
+            });
+          }
+
           await prisma.files.createMany({
             data: filesArr.map((f: any) => {
               let uploadDate: Date | null = null;

@@ -40,15 +40,20 @@ export function ShareModal({ open, onOpenChange, event }: ShareModalProps) {
   const eventId = event.id
   const eventTitle = event.title
 
-  // Extrair arquivos do evento
+  // Extrair arquivos do evento - apenas os 6 slots únicos (um por slot)
   const files: FileItem[] = Array.isArray(event.files)
-    ? event.files.map((file: any, index: number) => ({
-        id: `file-${index}`,
-        name: file.name,
-        type: file.name.split('.').pop() || 'file',
-        size: 0,
-        url: file.url
-      }))
+    ? event.files
+        .filter((file: any, index: number, self: any[]) => 
+          // Manter apenas o último arquivo de cada slot (remove duplicatas)
+          index === self.findIndex((f: any) => f.slot === file.slot)
+        )
+        .map((file: any, index: number) => ({
+          id: file.id || `file-${index}`,
+          name: file.name,
+          type: file.name.split('.').pop() || 'file',
+          size: 0,
+          url: file.url
+        }))
     : []
 
   const toggleFile = (fileId: string) => {
