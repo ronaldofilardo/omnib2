@@ -239,7 +239,7 @@ export async function PUT(req: Request) {
               if (f.content) {
                 try {
                   const buffer = Buffer.from(f.content, 'base64')
-                  const uploadDir = path.join(process.cwd(), 'public', 'uploads', id.toString())
+                  const uploadDir = process.env.NODE_ENV === 'production' ? path.join('/tmp', 'uploads', id.toString()) : path.join(process.cwd(), 'public', 'uploads', id.toString())
                   await fsPromises.mkdir(uploadDir, { recursive: true })
                   const filePath = path.join(uploadDir, `${f.slot}-${f.name}`)
                   await fsPromises.writeFile(filePath, buffer)
@@ -365,7 +365,7 @@ export async function PUT(req: Request) {
               console.log(`[API Events] Salvando arquivo: ${f.name} no slot ${f.slot} para evento ${id}`)
               try {
                 const buffer = Buffer.from(f.content, 'base64')
-                const uploadDir = path.join(process.cwd(), 'public', 'uploads', id.toString())
+                const uploadDir = process.env.NODE_ENV === 'production' ? path.join('/tmp', 'uploads', id.toString()) : path.join(process.cwd(), 'public', 'uploads', id.toString())
                 await fsPromises.mkdir(uploadDir, { recursive: true })
                 const filePath = path.join(uploadDir, `${f.slot}-${f.name}`)
                 await fsPromises.writeFile(filePath, buffer)
@@ -459,7 +459,7 @@ export async function PUT(req: Request) {
               console.log(`[API Events] Salvando arquivo: ${f.name} no slot ${f.slot} para evento ${id}`)
               try {
                 const buffer = Buffer.from(f.content, 'base64')
-                const uploadDir = path.join(process.cwd(), 'public', 'uploads', id.toString())
+                const uploadDir = process.env.NODE_ENV === 'production' ? path.join('/tmp', 'uploads', id.toString()) : path.join(process.cwd(), 'public', 'uploads', id.toString())
                 await fsPromises.mkdir(uploadDir, { recursive: true })
                 const filePath = path.join(uploadDir, `${f.slot}-${f.name}`)
                 await fsPromises.writeFile(filePath, buffer)

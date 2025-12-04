@@ -7,7 +7,7 @@ import { calculateFileHashFromBuffer } from '../utils/fileHashServer'
 
 export class LocalStorageProvider implements StorageProvider {
   private config = getCurrentStorageConfig()
-  private uploadDir = path.join(process.cwd(), 'public', 'uploads')
+  private uploadDir = process.env.NODE_ENV === 'production' ? '/tmp/uploads' : path.join(process.cwd(), 'public', 'uploads')
 
   async upload(file: File, options: UploadOptions = {}): Promise<StorageResult> {
     try {
@@ -107,7 +107,7 @@ export class LocalStorageProvider implements StorageProvider {
         return false
       }
 
-      const fullPath = path.join(process.cwd(), 'public', fileRecord.physicalPath)
+      const fullPath = process.env.NODE_ENV === 'production' ? path.join('/tmp', fileRecord.physicalPath) : path.join(process.cwd(), 'public', fileRecord.physicalPath)
       await fs.unlink(fullPath)
       return true
     } catch (error) {

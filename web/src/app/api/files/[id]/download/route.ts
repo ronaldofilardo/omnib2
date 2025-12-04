@@ -102,7 +102,7 @@ export async function GET(
     }
 
     // Para arquivos locais (desenvolvimento)
-    const filePath = path.join(process.cwd(), 'public', file.physicalPath)
+    const filePath = process.env.NODE_ENV === 'production' ? path.join('/tmp', file.physicalPath) : path.join(process.cwd(), 'public', file.physicalPath)
 
     // Prevenir acesso a arquivos com physicalPath inválido
     if (file.physicalPath.startsWith('/share/')) {

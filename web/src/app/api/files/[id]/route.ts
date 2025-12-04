@@ -56,7 +56,7 @@ export async function DELETE(
     // Deletar arquivo físico se existir
     if (file.physicalPath) {
       try {
-        const filePath = path.join(process.cwd(), 'public', file.physicalPath)
+        const filePath = process.env.NODE_ENV === 'production' ? path.join('/tmp', file.physicalPath) : path.join(process.cwd(), 'public', file.physicalPath)
         await unlink(filePath)
         console.log(`[FILE DELETE] Arquivo físico deletado: ${filePath}`)
       } catch (fileError) {

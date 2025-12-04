@@ -27,8 +27,8 @@ export async function DELETE(
       try {
         const rawUrl = String(file.url)
         const url = rawUrl.startsWith('http') ? new URL(rawUrl) : new URL(rawUrl, 'http://localhost')
-        const filePath = url.pathname.replace('/uploads/', 'public/uploads/')
-        const fullPath = path.join(process.cwd(), filePath)
+        const filePath = process.env.NODE_ENV === 'production' ? url.pathname.replace('/uploads/', 'uploads/') : url.pathname.replace('/uploads/', 'public/uploads/')
+        const fullPath = process.env.NODE_ENV === 'production' ? path.join('/tmp', filePath) : path.join(process.cwd(), filePath)
         if (fs.existsSync(fullPath)) {
           fs.unlinkSync(fullPath)
         }
