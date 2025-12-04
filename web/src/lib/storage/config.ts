@@ -23,16 +23,17 @@ export const STORAGE_CONFIGS: Record<string, StorageConfig> = {
     provider: 'local'
   },
   production: {
-    maxFileSize: 2 * 1024, // 2KB para Vercel free
+    maxFileSize: 5 * 1024 * 1024, // 5MB para Vercel Blob
     allowedMimeTypes: [
       'image/jpeg',
       'image/png',
       'image/gif',
       'image/webp',
+      'application/pdf',
     ],
-    uploadTimeout: 8000, // 8s para Vercel
+    uploadTimeout: 30000, // 30s
     allowLargeFiles: false,
-    provider: 'local' // manter local até migração B2
+    provider: 'vercel-compatible' // Usar Vercel Blob
   },
   test: {
     maxFileSize: 1 * 1024 * 1024, // 1MB para testes
