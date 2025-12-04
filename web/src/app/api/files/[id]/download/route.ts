@@ -149,11 +149,15 @@ export async function GET(
     // Determinar tipo MIME
     const mimeType = getMimeType(file.name)
 
+    // Para imagens, usar inline para visualização; para outros tipos, attachment para download
+    const isImage = mimeType.startsWith('image/')
+    const disposition = isImage ? 'inline' : 'attachment'
+
     // Retornar arquivo
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': mimeType,
-        'Content-Disposition': `attachment; filename="${file.name}"`,
+        'Content-Disposition': `${disposition}; filename="${file.name}"`,
       },
     })
   } catch (error) {
