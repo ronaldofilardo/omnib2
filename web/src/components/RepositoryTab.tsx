@@ -407,11 +407,11 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                           }
                           // Visualizar
                           const handleView = () => {
-                            if (file && file.url) {
-                              if (file.url.startsWith('data:')) {
+                            if (file) {
+                              if (file.url && file.url.startsWith('data:')) {
                                 setPreviewFile({ url: file.url, name: file.name })
                               } else {
-                                window.open(file.url, '_blank')
+                                window.open(`/api/files/${file.id}/download`, '_blank')
                               }
                             }
                           }
@@ -523,12 +523,10 @@ export function RepositoryTab({ userId }: RepositoryTabProps) {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => {
-                              if (orphanFile.url) {
-                                if (orphanFile.url.startsWith('data:')) {
-                                  setPreviewFile({ url: orphanFile.url, name: orphanFile.name })
-                                } else {
-                                  window.open(orphanFile.url, '_blank')
-                                }
+                              if (orphanFile.url && orphanFile.url.startsWith('data:')) {
+                                setPreviewFile({ url: orphanFile.url, name: orphanFile.name })
+                              } else {
+                                window.open(`/api/files/${orphanFile.id}/download`, '_blank')
                               }
                             }}
                             className="text-gray-500 hover:text-blue-600"

@@ -66,10 +66,8 @@ export class LocalStorageProvider implements StorageProvider {
         expiryDate: options.expiryDate
       }
 
-      // URL de acesso
-      const url = options.eventId
-        ? `/api/files/${fileId}/download`
-        : `/uploads/${fileName}`
+      // URL de acesso - sempre usar download API para consistência
+      const url = `/api/files/${fileId}/download`
 
       return {
         success: true,

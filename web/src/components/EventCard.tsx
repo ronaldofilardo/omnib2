@@ -416,18 +416,16 @@ export function EventCard({
                           <button
                             title="Visualizar"
                             onClick={() => {
-                              if (slot.url) {
+                              if (slot.url && slot.url.startsWith('data:')) {
                                 // Para URLs de dados (base64), mostrar no modal de preview
-                                if (slot.url.startsWith('data:')) {
-                                  setPreviewFile({
-                                    file: null as any, // Usar null para indicar que é URL
-                                    type: slot.type,
-                                    url: slot.url,
-                                  })
-                                } else {
-                                  // Abrir arquivo persistido em nova aba
-                                  window.open(slot.url, '_blank')
-                                }
+                                setPreviewFile({
+                                  file: null as any, // Usar null para indicar que é URL
+                                  type: slot.type,
+                                  url: slot.url,
+                                })
+                              } else if (slot.id) {
+                                // Abrir arquivo persistido em nova aba via download API
+                                window.open(`/api/files/${slot.id}/download`, '_blank')
                               } else if (slot.file) {
                                 setPreviewFile({
                                   file: slot.file,
